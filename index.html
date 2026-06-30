@@ -23,9 +23,13 @@
   --gold-soft:#e4c98a;
   --char:#0b0c0e;           /* near-black */
   --char2:#15171b;
-  /* ===== BRAND — swap these two for the official betterhomes spec ===== */
-  --brand:#ffffff;          /* betterhomes wordmark colour (white on dark, per brand) */
-  --brand-font:'Helvetica Neue',Helvetica,'Segoe UI',system-ui,Arial,sans-serif;
+  /* ===== BRAND — matched from the betterhomes Marketing Toolkit ===== */
+  --brand:#ffffff;          /* betterhomes wordmark colour (white on dark) */
+  --brand-font:ui-serif,Georgia,"Times New Roman",serif; /* wordmark is a serif logotype */
+  --brand-navy:#1d3a40;     /* deep teal-navy ground */
+  --brand-coral:#ff6f61;    /* signature coral (their CTA colour) */
+  --brand-blue:#3c6e91;     /* steel-blue secondary */
+  --brand-cream:#f3efe6;    /* warm off-white */
   /* live environment state — JS tweens these. The room reacts to all of it. */
   --p:0;                    /* overall progress 0..1 */
   --warm:0;                 /* warmth of light 0..1 */
@@ -36,7 +40,7 @@ html,body{height:100%;background:#000;color:var(--ink);
   -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow:hidden;
   overscroll-behavior:none;touch-action:manipulation;}
 .serif{font-family:ui-serif,Georgia,"Times New Roman",serif;}
-.brandmark{font-family:var(--brand-font);font-weight:700;letter-spacing:-.012em;text-transform:lowercase;color:var(--brand)}
+.brandmark{font-family:var(--brand-font);font-weight:600;letter-spacing:-.01em;text-transform:lowercase;color:var(--brand)}
 button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
 ::selection{background:var(--gold);color:#000}
 
@@ -443,10 +447,14 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
 .end-plat .t2{font-size:clamp(18px,4vw,30px);font-weight:700;letter-spacing:.02em;color:#6b4a1c}
 .end-bh{margin-top:26px;font-size:clamp(22px,5vw,40px);font-weight:600;color:#1a1208;letter-spacing:.01em}
 .end-bh b{color:#7a5320}
-.end-cta{margin-top:34px;display:inline-flex;align-items:center;gap:12px;padding:16px 34px;border-radius:100px;
-  background:#1a1208;color:#f3e3c4;letter-spacing:.14em;text-transform:uppercase;font-size:13px;transition:.4s;
-  box-shadow:0 20px 50px -20px rgba(0,0,0,.6)}
-.end-cta:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 26px 60px -20px rgba(0,0,0,.7)}
+.end-est{margin-top:14px;font-size:12px;letter-spacing:.16em;color:rgba(26,18,8,.62);display:inline-flex;align-items:center;gap:7px}
+.end-est b{font-weight:700;font-size:10px;letter-spacing:.1em;border-top:1.5px solid rgba(26,18,8,.62);padding-top:2px}
+.end-cta{margin-top:30px;display:inline-flex;align-items:center;gap:12px;padding:16px 34px;border-radius:100px;
+  background:var(--brand-coral);color:#3a1410;font-weight:600;letter-spacing:.12em;text-transform:uppercase;font-size:13px;transition:.4s;
+  box-shadow:0 20px 50px -20px rgba(255,111,97,.7)}
+.end-cta:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 26px 64px -18px rgba(255,111,97,.85)}
+.end-cta span{transition:transform .3s}
+.end-cta:hover span{transform:translateX(4px)}
 .end-meta{margin-top:26px;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:rgba(26,18,8,.55)}
 .share{margin-top:14px;display:inline-flex;gap:10px;align-items:center;padding:10px 20px;border-radius:100px;
   border:1px solid rgba(26,18,8,.3);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#1a1208;transition:.3s}
@@ -677,6 +685,7 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
       <div class="lead serif">You didn't need to become better.<em>You needed a better environment.</em></div>
       <div class="end-plat"><div class="t1">TRUST BETTER.</div><div class="t2">GET BETTER.</div></div>
       <div class="end-bh brandmark"><b>betterhomes</b></div>
+      <div class="end-est"><b>EST</b> 1986</div>
 
       <button class="report-toggle" id="reportBtn">See your escape report ↓</button>
       <div class="report" id="report">
@@ -690,7 +699,7 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
         <div class="bsource" id="bsource"></div>
       </div>
 
-      <a class="end-cta" id="ctaBtn" href="https://www.bhomes.com" target="_blank" rel="noopener">Continue Your Journey <span>→</span></a>
+      <a class="end-cta" id="ctaBtn" href="https://www.bhomes.com/en/join-our-team" target="_blank" rel="noopener">Continue Your Journey <span>→</span></a>
       <div class="end-meta" id="endMeta"></div>
       <button class="share" id="shareBtn">Share your escape</button>
     </div>
