@@ -1,0 +1,1285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<title>Escape the Brokerage — betterhomes</title>
+<meta name="description" content="An interactive escape experience. You think you're escaping a room. You're actually escaping the wrong brokerage." />
+<meta property="og:title" content="Escape the Brokerage" />
+<meta property="og:description" content="You think you're escaping a room. You're not." />
+<style>
+/* ============================================================
+   ESCAPE THE BROKERAGE — betterhomes Dubai
+   Single-file interactive recruitment experience.
+   No dependencies. Audio is synthesized. Art is SVG/CSS.
+   The ROOM is the progress bar. Solve 5 puzzles, the wrong
+   brokerage transforms into a betterhomes environment.
+   ============================================================ */
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#e9e6df;            /* off-white text */
+  --gold:#c9a45c;           /* signature gold */
+  --gold-soft:#e4c98a;
+  --char:#0b0c0e;           /* near-black */
+  --char2:#15171b;
+  /* ===== BRAND — swap these two for the official betterhomes spec ===== */
+  --brand:#ffffff;          /* betterhomes wordmark colour (white on dark, per brand) */
+  --brand-font:'Helvetica Neue',Helvetica,'Segoe UI',system-ui,Arial,sans-serif;
+  /* live environment state — JS tweens these. The room reacts to all of it. */
+  --p:0;                    /* overall progress 0..1 */
+  --warm:0;                 /* warmth of light 0..1 */
+  --bright:0;               /* ambient brightness 0..1 */
+}
+html,body{height:100%;background:#000;color:var(--ink);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow:hidden;
+  overscroll-behavior:none;touch-action:manipulation;}
+.serif{font-family:ui-serif,Georgia,"Times New Roman",serif;}
+.brandmark{font-family:var(--brand-font);font-weight:700;letter-spacing:-.012em;text-transform:lowercase;color:var(--brand)}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
+::selection{background:var(--gold);color:#000}
+
+#app{position:fixed;inset:0;overflow:hidden;background:#000;}
+
+/* ---------- Particle / dust canvas ---------- */
+#fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:30;}
+
+/* ---------- Top chrome (diegetic-light HUD) ---------- */
+.chrome{position:absolute;z-index:40;top:0;left:0;right:0;display:flex;justify-content:space-between;
+  align-items:center;padding:16px 18px;pointer-events:none;font-size:12px;letter-spacing:.18em;
+  text-transform:uppercase;color:rgba(233,230,223,.55);}
+.chrome .brand{font-weight:600}
+.chrome .brand b{color:var(--gold)}
+.chrome .right{display:flex;gap:14px;align-items:center;pointer-events:auto}
+.iconbtn{width:34px;height:34px;border:1px solid rgba(233,230,223,.18);border-radius:50%;
+  display:grid;place-items:center;transition:.3s;backdrop-filter:blur(6px);background:rgba(0,0,0,.2)}
+.iconbtn:hover{border-color:var(--gold);color:var(--gold);transform:translateY(-1px)}
+.iconbtn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round}
+
+/* ---------- LANDING ---------- */
+#landing{position:absolute;inset:0;z-index:60;display:grid;place-items:center;
+  background:radial-gradient(120% 90% at 50% 40%,#101216 0%,#050506 60%,#000 100%);
+  text-align:center;padding:24px;transition:opacity 1.1s ease, visibility 1.1s;}
+#landing.gone{opacity:0;visibility:hidden;pointer-events:none}
+.land-inner{max-width:760px;transform:translateY(0);animation:rise 1.3s cubic-bezier(.16,1,.3,1) both}
+.kicker{font-size:12px;letter-spacing:.45em;text-transform:uppercase;color:var(--gold);opacity:.9;margin-bottom:22px}
+#landing h1{font-size:clamp(38px,9vw,104px);line-height:.92;font-weight:600;letter-spacing:-.02em;
+  background:linear-gradient(180deg,#fff 0%,#cfc8b8 60%,#7c756a 100%);-webkit-background-clip:text;
+  background-clip:text;color:transparent;filter:drop-shadow(0 2px 30px rgba(0,0,0,.6))}
+#landing .sub{margin:26px auto 0;max-width:430px;font-size:clamp(14px,2.1vw,17px);line-height:1.6;
+  color:rgba(233,230,223,.62)}
+.enter{margin-top:46px;display:inline-flex;align-items:center;gap:14px;padding:16px 30px;border-radius:100px;
+  border:1px solid rgba(201,164,92,.5);color:var(--gold-soft);letter-spacing:.16em;text-transform:uppercase;
+  font-size:13px;position:relative;overflow:hidden;transition:.4s}
+.enter::before{content:"";position:absolute;inset:0;background:radial-gradient(60% 140% at 50% 120%,rgba(201,164,92,.35),transparent);
+  opacity:0;transition:.5s}
+.enter:hover{border-color:var(--gold);color:#fff;transform:translateY(-2px);box-shadow:0 16px 50px -18px rgba(201,164,92,.6)}
+.enter:hover::before{opacity:1}
+.enter .dot{width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 14px var(--gold);
+  animation:beat 2s infinite}
+.flick{animation:flick 5s infinite}
+@keyframes flick{0%,97%,100%{opacity:1}97.5%{opacity:.3}98%{opacity:1}98.5%{opacity:.5}}
+@keyframes rise{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+@keyframes beat{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.5}}
+
+/* ---------- SCENE / ROOM ---------- */
+#scene{position:absolute;inset:0;z-index:10;opacity:0;transition:opacity 1.4s ease 0.2s;
+  display:grid;place-items:center;background:#000;}
+#scene.live{opacity:1}
+.stage{position:relative;
+  width:min(100vw, calc(100vh * 1.6));
+  height:min(100vh, calc(100vw / 1.6));
+  margin:auto;overflow:hidden;
+  /* base ambient — interpolated by --warm/--bright. dark + cold at p=0 */
+  background:
+    radial-gradient(120% 80% at 64% 30%,
+      rgba(201,164,92,calc(.06 + var(--warm)*.34)) 0%,
+      transparent 55%),
+    linear-gradient(180deg,
+      hsl(calc(220 - var(--warm)*200) calc(12% + var(--warm)*10%) calc(6% + var(--bright)*9%)) 0%,
+      hsl(calc(222 - var(--warm)*190) 14% calc(4% + var(--bright)*7%)) 100%);
+  transition:background 1.6s ease;
+}
+/* global grade overlay: cold blue wash that lifts as room warms */
+.grade{position:absolute;inset:0;pointer-events:none;z-index:25;mix-blend-mode:multiply;
+  background:linear-gradient(180deg,rgba(40,60,90,1),rgba(20,28,44,1));
+  opacity:calc(.62 - var(--warm)*.62);transition:opacity 1.6s ease;}
+.vignette{position:absolute;inset:0;pointer-events:none;z-index:26;
+  box-shadow:inset 0 0 calc(120px + var(--bright)*40px) calc(60px - var(--bright)*30px) rgba(0,0,0,.9);
+  opacity:calc(.9 - var(--warm)*.45);transition:.6s;}
+
+/* the layered room — everything positioned in % of the stage */
+.room{position:absolute;inset:0}
+.layer{position:absolute;transition:all 1.4s cubic-bezier(.16,1,.3,1)}
+
+/* --- WINDOW (left) : night/storm -> golden Dubai --- */
+.window{left:5%;top:12%;width:30%;height:54%;border-radius:6px;overflow:hidden;
+  border:2px solid rgba(255,255,255,.08);
+  box-shadow:inset 0 0 0 6px rgba(0,0,0,.3), 0 30px 60px -30px #000;}
+.win-sky{position:absolute;inset:0;background:
+  linear-gradient(180deg,#0a1018 0%,#101a26 50%,#0b1119 100%);transition:1.6s}
+.has-marketing .win-sky{background:linear-gradient(180deg,#243a52 0%,#3f5774 60%,#6b6f82 100%)}
+.has-brand .win-sky{background:linear-gradient(180deg,#f0c178 0%,#e89b56 42%,#9c6b7e 78%,#3a4a6b 100%)}
+.win-rain{position:absolute;inset:0;background-image:repeating-linear-gradient(101deg,transparent 0 7px,rgba(180,200,230,.10) 7px 8px);
+  opacity:.8;transition:1s;animation:rain .5s linear infinite}
+.has-marketing .win-rain,.has-brand .win-rain{opacity:0}
+@keyframes rain{to{background-position:60px 120px}}
+.skyline{position:absolute;left:0;right:0;bottom:0;height:62%;opacity:.5;transition:1.6s}
+.has-brand .skyline{opacity:1}
+.win-sun{position:absolute;right:14%;top:18%;width:30%;height:0;padding-bottom:30%;border-radius:50%;
+  background:radial-gradient(circle,#fff 0%,var(--gold-soft) 40%,transparent 70%);opacity:0;transition:1.6s}
+.has-brand .win-sun{opacity:.95}
+.win-glass{position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.10),transparent 40%);pointer-events:none}
+.win-bars{position:absolute;inset:0;pointer-events:none}
+.win-bars::before,.win-bars::after{content:"";position:absolute;background:rgba(0,0,0,.5)}
+.win-bars::before{left:50%;top:0;bottom:0;width:3px;transform:translateX(-50%)}
+.win-bars::after{top:50%;left:0;right:0;height:3px;transform:translateY(-50%)}
+
+/* --- back wall logo (brand) --- */
+.wallmark{right:7%;top:16%;width:30%;text-align:center;opacity:0;transform:translateY(8px);
+  letter-spacing:.04em;}
+.has-brand .wallmark{opacity:1;transform:none}
+.wallmark .bh{font-size:clamp(14px,2.6vw,30px);font-weight:600;color:var(--gold);
+  text-shadow:0 0 24px rgba(201,164,92,.7)}
+.wallmark .tg{font-size:clamp(7px,1.1vw,11px);letter-spacing:.4em;color:rgba(233,230,223,.6);margin-top:6px}
+
+/* --- ceiling pendant light --- */
+.pendant{left:50%;top:0;width:2px;height:9%;transform:translateX(-50%);
+  background:linear-gradient(#444,#222)}
+.bulb{left:50%;top:9%;width:46px;height:30px;transform:translateX(-50%);border-radius:0 0 40% 40%;
+  background:radial-gradient(circle at 50% 25%,#2a2a2a,#111);transition:1s}
+.bulb::after{content:"";position:absolute;left:50%;top:55%;width:8px;height:8px;transform:translateX(-50%);
+  border-radius:50%;background:#3a3a3a;transition:1s}
+.has-power .bulb{background:radial-gradient(circle at 50% 30%,#fff5e0,#caa45c)}
+.has-power .bulb::after{background:#fff;box-shadow:0 0 30px 12px rgba(255,225,170,.8)}
+.lightcone{left:50%;top:13%;width:0;height:0;transform:translateX(-50%);
+  border-left:140px solid transparent;border-right:140px solid transparent;
+  border-top:0 solid rgba(255,225,170,0);transition:1.2s;pointer-events:none}
+.has-power .lightcone{border-top:340px solid rgba(255,225,170,.10)}
+
+/* --- desk + monitor --- */
+.desk{left:46%;bottom:11%;width:44%;height:9%;border-radius:6px 6px 3px 3px;
+  background:linear-gradient(#3a3a3e,#222226);box-shadow:0 24px 40px -22px #000;transition:1.2s}
+.has-training .desk{background:linear-gradient(#6b563a,#3f3122)}
+.desk::before{content:"";position:absolute;left:6%;top:100%;width:7px;height:120%;background:#1a1a1d}
+.desk::after{content:"";position:absolute;right:6%;top:100%;width:7px;height:120%;background:#1a1a1d}
+.monitor{left:54%;bottom:20%;width:24%;height:26%;border-radius:8px;background:#0a0a0c;
+  border:3px solid #1c1c20;overflow:hidden;box-shadow:0 18px 40px -20px #000;transition:1s}
+.mon-crack{position:absolute;inset:0;opacity:1;transition:1s;
+  background:
+    linear-gradient(63deg,transparent 49.6%,rgba(180,190,210,.5) 49.8%,transparent 50.1%),
+    linear-gradient(112deg,transparent 39.6%,rgba(180,190,210,.35) 39.9%,transparent 40.2%),
+    radial-gradient(circle at 38% 44%,rgba(200,210,230,.5) 0 2px,transparent 3px)}
+.mon-screen{position:absolute;inset:0;opacity:0;transition:1.2s;
+  background:linear-gradient(135deg,#0e2a44,#0a1620)}
+.has-power .mon-crack{opacity:.0}
+.has-power .mon-screen{opacity:1;background:radial-gradient(120% 100% at 30% 0%,#13344f,#08111c)}
+.has-marketing .mon-screen{opacity:1;
+  background:
+    linear-gradient(115deg,rgba(201,164,92,.25),transparent 60%),
+    linear-gradient(160deg,#10406a 0%,#0a2138 100%)}
+.mon-listings{position:absolute;inset:10% 8%;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;opacity:0;transition:1s}
+.has-marketing .mon-listings{opacity:1}
+.mon-listings i{display:block;border-radius:3px;background:linear-gradient(160deg,#bcd0e6,#7e95ad);
+  position:relative;overflow:hidden}
+.mon-listings i::after{content:"";position:absolute;left:8%;bottom:10%;width:60%;height:8%;background:rgba(255,255,255,.8);border-radius:2px}
+.monstand{left:64%;bottom:13%;width:4%;height:8%;background:#15151a;border-radius:0 0 4px 4px}
+
+/* desk lamp (training) */
+.lamp{left:80%;bottom:20%;width:3%;height:14%;opacity:0;transition:1s}
+.has-training .lamp{opacity:1}
+.lamp .arm{position:absolute;left:40%;bottom:0;width:3px;height:100%;background:#caa45c;transform-origin:bottom;transform:rotate(12deg)}
+.lamp .head{position:absolute;left:55%;top:-6%;width:120%;height:22%;background:#caa45c;border-radius:50% 50% 6px 6px}
+.lamp .head::after{content:"";position:absolute;left:10%;bottom:-180%;width:80%;height:300%;
+  background:radial-gradient(ellipse at top,rgba(255,225,170,.55),transparent 70%)}
+
+/* --- painting (training): crooked grey -> straight Dubai art --- */
+.painting{left:36.5%;top:18%;width:13%;height:18%;transform:rotate(-7deg);
+  background:#15151a;border:6px solid #2a2a2e;border-radius:3px;box-shadow:0 14px 30px -16px #000;transition:1.2s}
+.has-training .painting{transform:rotate(0deg);border-color:#caa45c}
+.paint-art{position:absolute;inset:0;background:#101216;transition:1.2s}
+.has-training .paint-art{background:linear-gradient(160deg,#e6a861,#7c4f6b 70%,#274063)}
+.has-training .paint-art::after{content:"";position:absolute;left:8%;bottom:0;width:84%;height:55%;
+  background:repeating-linear-gradient(90deg,#1c2740 0 6px,transparent 6px 12px);opacity:.55}
+
+/* --- shelf + books + trophy --- */
+.shelf{right:8%;top:42%;width:26%;height:3%;background:#2a2a2e;border-radius:3px;
+  box-shadow:0 12px 20px -14px #000;transition:1s}
+.has-training .shelf{background:#6b563a}
+.books{right:9%;top:33%;width:18%;height:9%;display:flex;gap:4px;align-items:flex-end;opacity:0;transition:1s}
+.has-training .books{opacity:1}
+.books span{flex:1;border-radius:2px 2px 0 0}
+.books span:nth-child(1){height:90%;background:#8a5a3a}
+.books span:nth-child(2){height:75%;background:#caa45c}
+.books span:nth-child(3){height:100%;background:#4a5a6a}
+.books span:nth-child(4){height:80%;background:#7a4a4a}
+.books span:nth-child(5){height:95%;background:#3a4a3a}
+.trophy{right:11%;top:30%;width:5%;height:12%;opacity:0;transform:scale(.6);transition:.9s cubic-bezier(.16,1,.3,1)}
+.has-leadership .trophy{opacity:1;transform:none}
+.trophy .cup{position:absolute;left:20%;top:0;width:60%;height:55%;background:linear-gradient(#f3d488,#b07f2e);
+  border-radius:0 0 50% 50%;box-shadow:0 0 18px rgba(201,164,92,.7)}
+.trophy .cup::before,.trophy .cup::after{content:"";position:absolute;top:6%;width:24%;height:60%;
+  border:3px solid #caa45c;border-radius:50%}
+.trophy .cup::before{left:-22%}.trophy .cup::after{right:-22%}
+.trophy .base{position:absolute;left:35%;top:60%;width:30%;height:35%;background:#7a5a2a;border-radius:2px}
+
+/* --- second chair (mentorship) --- */
+.chair{left:33%;bottom:9%;width:9%;height:20%;opacity:0;transform:translateX(-12px);transition:1s}
+.has-leadership .chair{opacity:1;transform:none}
+.chair .seat{position:absolute;bottom:32%;left:0;width:100%;height:14%;background:#2a2a30;border-radius:4px}
+.chair .back{position:absolute;bottom:46%;left:6%;width:88%;height:52%;background:#33333a;border-radius:8px 8px 4px 4px;box-shadow:inset 0 0 0 2px rgba(201,164,92,.25)}
+.chair .leg{position:absolute;bottom:0;left:46%;width:8%;height:34%;background:#1a1a1d}
+.chair .foot{position:absolute;bottom:0;left:30%;width:40%;height:6%;background:#222;border-radius:50%}
+
+/* --- plant (grows with leadership) --- */
+.plant{left:88%;bottom:11%;width:10%;height:0;opacity:0;transition:1.4s cubic-bezier(.16,1,.3,1)}
+.has-leadership .plant{opacity:1;height:30%}
+.plant .pot{position:absolute;bottom:0;left:18%;width:64%;height:34%;background:linear-gradient(#3a2c20,#241a12);
+  border-radius:4px 4px 8px 8px}
+.plant .leaf{position:absolute;bottom:30%;left:50%;width:14%;height:70%;background:linear-gradient(#3f7a4a,#27512f);
+  border-radius:50% 50% 50% 50%;transform-origin:bottom}
+.plant .leaf:nth-child(2){transform:translateX(-50%) rotate(-26deg)}
+.plant .leaf:nth-child(3){transform:translateX(-50%) rotate(0deg) scaleY(1.15)}
+.plant .leaf:nth-child(4){transform:translateX(-50%) rotate(26deg)}
+.plant .leaf:nth-child(5){transform:translateX(-50%) rotate(-46deg) scaleY(.8)}
+.plant .leaf:nth-child(6){transform:translateX(-50%) rotate(46deg) scaleY(.8)}
+.plant .leaf{animation:sway 6s ease-in-out infinite alternate}
+
+/* marketing wall screen (right, above shelf) */
+.mwall{right:6%;top:18%;width:30%;height:18%;border-radius:6px;background:#0a0a0c;border:2px solid #1c1c20;
+  overflow:hidden;opacity:.25;transition:1.2s;box-shadow:0 18px 40px -22px #000}
+.has-marketing .mwall{opacity:1;border-color:rgba(201,164,92,.4)}
+.mwall .grid{position:absolute;inset:8%;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:1fr 1fr;gap:5px}
+.mwall .grid i{border-radius:3px;background:#11202e}
+.has-marketing .mwall .grid i{background:linear-gradient(160deg,#bcd0e6,#6f8aa6)}
+.mwall .bar{position:absolute;left:8%;right:8%;bottom:6%;height:6%;background:rgba(201,164,92,.0);transition:1.2s}
+.has-marketing .mwall .bar{background:rgba(201,164,92,.6)}
+
+/* dust on floor / clutter (clears as we progress) */
+.clutter{left:50%;bottom:10%;width:8%;height:5%;background:radial-gradient(circle,#222,transparent 70%);
+  opacity:calc(.8 - var(--p)*.8);transition:1s}
+.floor{left:0;right:0;bottom:0;height:11%;background:linear-gradient(180deg,
+  hsl(calc(30 - var(--warm)*5) calc(6% + var(--warm)*22%) calc(7% + var(--bright)*6%)),
+  hsl(30 8% calc(3% + var(--bright)*4%)));transition:1.4s}
+.floor::after{content:"";position:absolute;inset:0;opacity:var(--warm);transition:1.4s;
+  background:linear-gradient(100deg,transparent 40%,rgba(201,164,92,.12) 50%,transparent 60%)}
+
+/* --- fuse box (power clue) --- */
+.fusebox{left:84%;top:30%;width:9%;height:17%;border-radius:4px;display:flex;flex-direction:column;
+  justify-content:center;gap:10%;padding:13% 20%;background:linear-gradient(#26282e,#14161b);
+  border:1px solid rgba(255,255,255,.07);box-shadow:0 12px 26px -16px #000;transition:1.2s}
+.fusebox span{height:16%;border-radius:2px;background:#4a2222;transition:1s}
+.has-power .fusebox{border-color:rgba(201,164,92,.45)}
+.has-power .fusebox span{background:#3fa060;box-shadow:0 0 10px #3fa060}
+
+/* --- safe (leadership clue) --- */
+.safe{left:2%;top:60%;width:13%;height:22%;border-radius:5px;background:linear-gradient(135deg,#26282e,#131419);
+  border:2px solid #0d0e11;box-shadow:0 18px 32px -18px #000, inset 0 0 0 4px rgba(255,255,255,.03);transition:1.2s}
+.safe .dial{position:absolute;right:20%;top:50%;width:30%;padding-bottom:30%;transform:translateY(-50%);
+  border-radius:50%;background:radial-gradient(circle,#3a3c44,#191a1f);border:2px solid #0d0e11;transition:1.2s}
+.safe .dial::after{content:"";position:absolute;left:46%;top:8%;width:8%;height:42%;background:#caa45c;
+  transform-origin:bottom center;border-radius:2px;transition:1.2s}
+.has-leadership .safe{border-color:var(--gold)}
+.has-leadership .safe .dial{background:radial-gradient(circle,#e4c98a,#7a5a2a);box-shadow:0 0 18px rgba(201,164,92,.6)}
+.has-leadership .safe .dial::after{transform:rotate(140deg)}
+
+/* --- THE DOOR (right) — the way out --- */
+.door{right:0;top:14%;width:7%;height:62%;background:linear-gradient(90deg,#1a1a1d,#0e0e10);
+  border-left:3px solid #2a2a2e;border-radius:4px 0 0 4px;transition:1.2s;
+  box-shadow:-20px 0 50px -30px #000}
+.has-brand .door{background:linear-gradient(90deg,#2a2118,#15110b);border-left-color:var(--gold)}
+.door .handle{position:absolute;left:14%;top:48%;width:10%;height:6%;background:#444;border-radius:2px;transition:1s}
+.has-brand .door .handle{background:var(--gold);box-shadow:0 0 16px rgba(201,164,92,.8)}
+.door .exit{position:absolute;top:-9%;left:50%;transform:translateX(-50%);font-size:9px;letter-spacing:.3em;
+  color:#7a2a2a;border:1px solid #7a2a2a;padding:2px 6px;border-radius:3px;white-space:nowrap;transition:.6s}
+.door.unlocked .exit{color:var(--gold);border-color:var(--gold);box-shadow:0 0 18px rgba(201,164,92,.5)}
+/* collectible slots on the door */
+.slots{position:absolute;left:50%;top:24%;transform:translateX(-50%);display:flex;flex-direction:column;gap:14%;}
+.slot{width:16px;height:16px;border:1px solid rgba(201,164,92,.35);border-radius:50%;position:relative;
+  transition:.6s;display:grid;place-items:center}
+.slot.filled{border-color:var(--gold);background:rgba(201,164,92,.18);box-shadow:0 0 16px rgba(201,164,92,.6)}
+.slot svg{width:10px;height:10px;opacity:0;transform:scale(.5);transition:.5s;fill:var(--gold-soft)}
+.slot.filled svg{opacity:1;transform:none}
+
+/* --- HOTSPOTS — invisible clickable zones with breathing aura --- */
+.hot{position:absolute;z-index:20;border:none;background:transparent;border-radius:10px;
+  display:grid;place-items:center;transition:.3s}
+.hot::before{content:"";position:absolute;inset:-6%;border-radius:14px;
+  box-shadow:0 0 0 1px rgba(201,164,92,.0);transition:.4s}
+.hot .aura{width:18px;height:18px;border-radius:50%;background:var(--gold);
+  box-shadow:0 0 0 0 rgba(201,164,92,.6);animation:beacon 2.6s infinite;opacity:.0;transition:.4s}
+.hot:not(.done):hover .aura,.hot.hint .aura{opacity:.9}
+.hot:not(.done):hover::before{box-shadow:0 0 0 1px rgba(201,164,92,.5),0 0 40px rgba(201,164,92,.25) inset}
+.hot:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+.hot.done{cursor:default}
+.hot.done .aura{opacity:0 !important;animation:none}
+.hot.done .check{opacity:1;transform:scale(1)}
+.check{position:absolute;width:22px;height:22px;border-radius:50%;background:rgba(201,164,92,.95);
+  display:grid;place-items:center;opacity:0;transform:scale(.4);transition:.5s cubic-bezier(.16,1,.3,1)}
+.check svg{width:12px;height:12px;stroke:#0b0c0e;stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.hot.hint{animation:hotnudge 1.4s ease-in-out infinite}
+@keyframes hotnudge{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+@keyframes beacon{0%{box-shadow:0 0 0 0 rgba(201,164,92,.55)}70%{box-shadow:0 0 0 16px rgba(201,164,92,0)}100%{box-shadow:0 0 0 0 rgba(201,164,92,0)}}
+@keyframes sway{from{transform:translateX(-50%) rotate(-4deg)}to{transform:translateX(-50%) rotate(4deg)}}
+
+/* whisper hint line bottom */
+.whisper{position:absolute;z-index:40;left:50%;bottom:18px;transform:translateX(-50%);
+  font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:rgba(233,230,223,.42);
+  text-align:center;transition:.6s;pointer-events:none;max-width:80%}
+
+/* ---------- MODAL (puzzle host) ---------- */
+#modal{position:absolute;inset:0;z-index:80;display:none;place-items:center;padding:20px;
+  background:rgba(3,4,6,.72);backdrop-filter:blur(10px)}
+#modal.open{display:grid;animation:fade .4s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.panel{width:min(560px,94vw);max-height:90vh;overflow:auto;border-radius:20px;padding:30px;
+  background:linear-gradient(180deg,rgba(26,28,33,.96),rgba(14,15,18,.98));
+  border:1px solid rgba(201,164,92,.22);box-shadow:0 40px 120px -40px #000, inset 0 1px 0 rgba(255,255,255,.04);
+  transform:translateY(14px);animation:pop .5s cubic-bezier(.16,1,.3,1) forwards}
+@keyframes pop{to{transform:none}}
+.panel .ptag{font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
+.panel h2{font-size:clamp(20px,4vw,28px);font-weight:600;letter-spacing:-.01em;margin-bottom:6px}
+.panel .pdesc{font-size:14px;line-height:1.55;color:rgba(233,230,223,.6);margin-bottom:22px}
+.pclose{position:absolute;top:14px;right:16px;font-size:24px;color:rgba(233,230,223,.5);
+  width:34px;height:34px;border-radius:50%;display:grid;place-items:center;transition:.3s}
+.pclose:hover{color:#fff;background:rgba(255,255,255,.07)}
+.modal-wrap{position:relative}
+
+/* puzzle: fuse drag */
+.fuse-stage{display:flex;flex-direction:column;gap:18px;align-items:center}
+.slots-row,.tray-row{display:flex;gap:14px;justify-content:center}
+.fslot{width:62px;height:78px;border-radius:8px;border:2px dashed rgba(201,164,92,.4);
+  display:grid;place-items:center;transition:.3s;background:rgba(255,255,255,.02)}
+.fslot.over{border-color:var(--gold);background:rgba(201,164,92,.12)}
+.fslot.filled{border-style:solid}
+.fuse{width:50px;height:66px;border-radius:7px;display:grid;place-items:center;cursor:grab;touch-action:none;
+  background:linear-gradient(160deg,#2a2c34,#15161b);border:1px solid rgba(255,255,255,.08);
+  box-shadow:0 8px 20px -10px #000;transition:transform .2s, box-shadow .2s;font-size:22px;user-select:none}
+.fuse:active{cursor:grabbing}
+.fuse.dragging{opacity:.4}
+.fuse .pin{width:60%;height:8px;border-radius:3px}
+.master{margin-top:6px;padding:14px 28px;border-radius:100px;border:1px solid rgba(255,255,255,.14);
+  letter-spacing:.18em;text-transform:uppercase;font-size:12px;color:rgba(233,230,223,.4);transition:.4s}
+.master.ready{border-color:var(--gold);color:var(--gold);box-shadow:0 0 30px -8px rgba(201,164,92,.7);cursor:pointer}
+.master.ready:hover{background:rgba(201,164,92,.12)}
+
+/* puzzle: cables (svg) */
+.cable-stage{position:relative}
+.cable-svg{width:100%;height:300px;display:block;touch-action:none}
+.port{cursor:pointer}
+.hintline{text-align:center;font-size:12px;color:rgba(233,230,223,.45);margin-top:6px}
+
+/* puzzle: simon */
+.simon-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:min(300px,80vw);margin:0 auto}
+.sbtn{aspect-ratio:1;border-radius:16px;border:1px solid rgba(255,255,255,.08);transition:.15s;
+  background:#1a1c22;position:relative;overflow:hidden}
+.sbtn .glow{position:absolute;inset:0;opacity:0;transition:.18s}
+.sbtn.lit .glow{opacity:1}
+.sbtn:nth-child(1) .glow{background:radial-gradient(circle,#e4c98a,#caa45c)}
+.sbtn:nth-child(2) .glow{background:radial-gradient(circle,#7fb4e0,#3f7fc0)}
+.sbtn:nth-child(3) .glow{background:radial-gradient(circle,#7fd6a0,#3fa060)}
+.sbtn:nth-child(4) .glow{background:radial-gradient(circle,#e0a0a0,#c05050)}
+.simon-status{text-align:center;margin-top:18px;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:rgba(233,230,223,.5)}
+
+/* puzzle: UV reveal */
+.uv-stage{position:relative;width:100%;aspect-ratio:16/10;border-radius:12px;overflow:hidden;
+  background:#0a0b0e;border:1px solid rgba(255,255,255,.06);cursor:none;touch-action:none}
+.uv-hidden{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:transparent}
+.uv-hidden .bh{font-size:clamp(26px,7vw,52px);font-weight:600;letter-spacing:.02em}
+.uv-hidden .tg{font-size:12px;letter-spacing:.4em;margin-top:10px;text-transform:uppercase}
+.uv-light{position:absolute;width:150px;height:150px;border-radius:50%;pointer-events:none;
+  transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(150,120,255,.5),rgba(120,90,230,.12) 55%,transparent 70%);
+  mix-blend-mode:screen;left:-300px;top:-300px}
+.uv-meter{height:4px;border-radius:3px;background:rgba(255,255,255,.08);margin-top:14px;overflow:hidden}
+.uv-meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,#8a6bff,var(--gold));transition:.2s}
+
+/* puzzle: painting straighten / find key */
+.find-stage{position:relative;width:100%;aspect-ratio:16/11;border-radius:12px;overflow:hidden;
+  background:linear-gradient(180deg,#1a1b20,#101116);border:1px solid rgba(255,255,255,.06)}
+.fp-frame{position:absolute;left:50%;top:42%;width:42%;height:48%;transform:translate(-50%,-50%) rotate(-9deg);
+  background:#0c0d11;border:7px solid #2c2c30;border-radius:4px;cursor:grab;touch-action:none;transition:box-shadow .3s;
+  box-shadow:0 18px 36px -18px #000}
+.fp-frame.level{border-color:var(--gold);box-shadow:0 0 30px -6px rgba(201,164,92,.6)}
+.fp-frame .art{position:absolute;inset:0;background:linear-gradient(160deg,#3a2f44,#23304a)}
+.fp-key{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%) scale(.5);font-size:34px;opacity:0;transition:.6s;cursor:pointer;
+  filter:drop-shadow(0 0 14px rgba(201,164,92,.8))}
+.fp-key.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.fp-lock{position:absolute;right:9%;bottom:10%;width:50px;height:50px;border-radius:8px;border:2px solid rgba(201,164,92,.4);
+  display:grid;place-items:center;font-size:22px;transition:.4s}
+.fp-lock.over{border-color:var(--gold);background:rgba(201,164,92,.15);transform:scale(1.08)}
+.fp-note{text-align:center;font-size:12px;color:rgba(233,230,223,.45);margin-top:12px}
+
+/* advantage card (post-solve) */
+.adv{text-align:center;padding:8px 4px}
+.adv .badge{width:60px;height:60px;border-radius:50%;margin:0 auto 18px;display:grid;place-items:center;
+  background:radial-gradient(circle,rgba(201,164,92,.25),transparent 70%);border:1px solid rgba(201,164,92,.4);
+  animation:badgein .7s cubic-bezier(.16,1,.3,1)}
+.adv .badge svg{width:28px;height:28px;stroke:var(--gold);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+@keyframes badgein{from{transform:scale(.4) rotate(-20deg);opacity:0}to{transform:none;opacity:1}}
+.adv .vs{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:rgba(233,230,223,.4);margin-bottom:10px}
+.adv .old{color:rgba(233,230,223,.55);font-size:14px;line-height:1.5;margin-bottom:14px}
+.adv .new{color:var(--gold-soft);font-size:clamp(17px,3.6vw,22px);line-height:1.4;font-weight:500}
+.adv .cont{margin-top:24px;padding:13px 30px;border-radius:100px;border:1px solid rgba(201,164,92,.5);
+  color:var(--gold-soft);letter-spacing:.14em;text-transform:uppercase;font-size:12px;transition:.3s}
+.adv .cont:hover{background:rgba(201,164,92,.12);color:#fff}
+
+/* ---------- ENDING ---------- */
+#ending{position:absolute;inset:0;z-index:90;display:none;text-align:center;
+  background:radial-gradient(120% 100% at 50% 16%,#f7e9cf 0%,#e7c891 22%,#caa45c 42%,#7a5a3a 70%,#1a1410 100%);
+  color:#1a1208;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+#ending.show{display:block;animation:dawn 2.2s ease both}
+@keyframes dawn{0%{opacity:0;filter:brightness(2.4)}40%{opacity:1}100%{filter:none}}
+.end-sky{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.end-sky .sun{position:absolute;left:50%;top:8%;width:260px;height:260px;transform:translateX(-50%);border-radius:50%;
+  background:radial-gradient(circle,#fff 0%,#ffe9b8 40%,transparent 68%);opacity:.9}
+.end-inner{position:relative;z-index:2;max-width:680px;margin:0 auto;min-height:100%;box-sizing:border-box;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:64px 26px;
+  animation:rise 1.4s cubic-bezier(.16,1,.3,1) .5s both}
+.end-inner .lead{font-size:clamp(24px,5.4vw,46px);line-height:1.12;font-weight:600;letter-spacing:-.02em;color:#1a1208}
+.end-inner .lead em{font-style:normal;color:#6b4a1c;display:block}
+.end-plat{margin:30px auto 0;display:inline-block}
+.end-plat .t1{font-size:clamp(18px,4vw,30px);font-weight:700;letter-spacing:.02em;color:#1a1208}
+.end-plat .t2{font-size:clamp(18px,4vw,30px);font-weight:700;letter-spacing:.02em;color:#6b4a1c}
+.end-bh{margin-top:26px;font-size:clamp(22px,5vw,40px);font-weight:600;color:#1a1208;letter-spacing:.01em}
+.end-bh b{color:#7a5320}
+.end-cta{margin-top:34px;display:inline-flex;align-items:center;gap:12px;padding:16px 34px;border-radius:100px;
+  background:#1a1208;color:#f3e3c4;letter-spacing:.14em;text-transform:uppercase;font-size:13px;transition:.4s;
+  box-shadow:0 20px 50px -20px rgba(0,0,0,.6)}
+.end-cta:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 26px 60px -20px rgba(0,0,0,.7)}
+.end-meta{margin-top:26px;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:rgba(26,18,8,.55)}
+.share{margin-top:14px;display:inline-flex;gap:10px;align-items:center;padding:10px 20px;border-radius:100px;
+  border:1px solid rgba(26,18,8,.3);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#1a1208;transition:.3s}
+.share:hover{background:rgba(26,18,8,.08)}
+
+/* key assembly overlay */
+#assemble{position:absolute;inset:0;z-index:88;display:none;place-items:center;background:rgba(2,3,5,.92);backdrop-filter:blur(6px)}
+#assemble.show{display:grid}
+.akey{position:relative;width:200px;height:200px}
+.akey .frag{position:absolute;left:50%;top:50%;font-size:30px;filter:drop-shadow(0 0 12px rgba(201,164,92,.8));
+  transition:all 1.1s cubic-bezier(.16,1,.3,1)}
+.akey .core{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(0);opacity:0;
+  transition:all .9s cubic-bezier(.16,1,.3,1)}
+.akey.formed .core{transform:translate(-50%,-50%) scale(1);opacity:1}
+.akey .core svg{width:120px;height:120px;fill:var(--gold);filter:drop-shadow(0 0 28px rgba(201,164,92,.9))}
+.aturn{text-align:center;margin-top:30px;color:var(--gold-soft);letter-spacing:.2em;text-transform:uppercase;font-size:12px;opacity:0;transition:.6s}
+.aturn.show{opacity:1}
+
+/* flash */
+#flash{position:absolute;inset:0;z-index:95;background:#fff;opacity:0;pointer-events:none;transition:opacity 1.2s ease}
+#flash.on{opacity:1}
+
+/* toast */
+#toast{position:absolute;z-index:85;left:50%;top:74px;transform:translateX(-50%) translateY(-16px);
+  background:rgba(20,22,26,.92);border:1px solid rgba(201,164,92,.3);color:var(--gold-soft);
+  padding:10px 18px;border-radius:100px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+  opacity:0;transition:.5s cubic-bezier(.16,1,.3,1);pointer-events:none;backdrop-filter:blur(8px)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ---------- SCORE (diegetic, understated) ---------- */
+.score{font-variant-numeric:tabular-nums;font-size:13px;letter-spacing:.14em;color:var(--gold);
+  border:1px solid rgba(201,164,92,.28);border-radius:100px;padding:6px 15px;min-width:78px;text-align:center;
+  background:rgba(0,0,0,.28);backdrop-filter:blur(6px);transition:transform .3s cubic-bezier(.16,1,.3,1),box-shadow .3s,opacity .5s;
+  opacity:0;transform:translateY(-8px);display:flex;align-items:center;gap:7px}
+.score.show{opacity:1;transform:none}
+.score.bump{transform:scale(1.14);box-shadow:0 0 26px -6px rgba(201,164,92,.7)}
+.score .lab{font-size:9px;letter-spacing:.22em;opacity:.6}
+.fp{position:fixed;z-index:86;color:var(--gold-soft);font-weight:600;font-size:clamp(18px,3vw,26px);
+  pointer-events:none;text-shadow:0 2px 18px rgba(201,164,92,.6);font-variant-numeric:tabular-nums;
+  animation:floatpt 1.25s cubic-bezier(.16,1,.3,1) forwards}
+@keyframes floatpt{0%{opacity:0;transform:translate(-50%,0) scale(.6)}18%{opacity:1;transform:translate(-50%,-14px) scale(1.05)}100%{opacity:0;transform:translate(-50%,-72px) scale(1)}}
+
+/* ---------- ESCAPE REPORT + LEADERBOARD (warm ending) ---------- */
+.report-toggle{margin-top:30px;display:inline-flex;align-items:center;gap:8px;padding:11px 24px;border-radius:100px;
+  border:1px solid rgba(26,18,8,.35);color:#1a1208;font-size:12px;letter-spacing:.14em;text-transform:uppercase;transition:.3s;animation:beat 2.6s infinite}
+.report-toggle:hover{background:rgba(26,18,8,.08);transform:translateY(-1px)}
+.report{max-width:440px;margin:24px auto 0;text-align:left;overflow:hidden;max-height:0;opacity:0;
+  transition:max-height .9s cubic-bezier(.16,1,.3,1), opacity .7s}
+.report.open{max-height:1400px;opacity:1}
+.rscore{text-align:center;font-variant-numeric:tabular-nums;font-weight:700;letter-spacing:-.02em;
+  font-size:clamp(46px,12vw,76px);color:#1a1208;line-height:1}
+.rscore .pts{font-size:.28em;letter-spacing:.2em;opacity:.55;display:block;margin-top:6px;text-transform:uppercase}
+.rbreak{margin:20px 0 6px;border-top:1px solid rgba(26,18,8,.18)}
+.rrow{display:flex;justify-content:space-between;align-items:center;padding:11px 2px;border-bottom:1px solid rgba(26,18,8,.12);
+  font-size:14px;opacity:0;transform:translateY(8px);transition:.5s}
+.rrow.in{opacity:1;transform:none}
+.rrow .v{font-variant-numeric:tabular-nums;font-weight:600}
+.rrow.dim{color:rgba(26,18,8,.45)}
+.rname{margin-top:20px;display:flex;gap:8px}
+.rname input{flex:1;padding:13px 16px;border-radius:12px;border:1px solid rgba(26,18,8,.3);background:rgba(255,255,255,.5);
+  color:#1a1208;font:inherit;font-size:15px;outline:none;transition:.3s}
+.rname input:focus{border-color:#1a1208;background:rgba(255,255,255,.8)}
+.rname input::placeholder{color:rgba(26,18,8,.45)}
+.rname button{padding:13px 20px;border-radius:12px;background:#1a1208;color:#f3e3c4;font-size:12px;letter-spacing:.1em;
+  text-transform:uppercase;transition:.3s;white-space:nowrap}
+.rname button:hover{transform:translateY(-1px)}
+.rname button:disabled{opacity:.4;cursor:default;transform:none}
+.board{margin-top:18px;display:flex;flex-direction:column;gap:2px}
+.board .bhead{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:rgba(26,18,8,.5);
+  display:flex;justify-content:space-between;padding:0 12px 8px}
+.brow{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:10px;background:rgba(255,255,255,.32);
+  font-size:14px;transition:.4s;opacity:0;transform:translateX(-8px)}
+.brow.in{opacity:1;transform:none}
+.brow.you{background:#1a1208;color:#f3e3c4;box-shadow:0 12px 30px -14px rgba(26,18,8,.6)}
+.brow .rk{width:26px;font-variant-numeric:tabular-nums;font-weight:700;opacity:.7}
+.brow .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brow .sc{font-variant-numeric:tabular-nums;font-weight:600}
+.brow.you .rk{opacity:1;color:var(--gold-soft)}
+.bsource{text-align:center;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(26,18,8,.4);margin-top:12px}
+
+/* reduced motion */
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.001ms !important;transition-duration:.2s !important}
+}
+@media (max-width:640px){
+  .chrome{font-size:10px}
+  .whisper{font-size:10px;bottom:12px}
+  .panel{padding:22px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="fx"></canvas>
+
+  <!-- top chrome -->
+  <div class="chrome">
+    <div class="brand">ESCAPE THE <b>BROKERAGE</b></div>
+    <div class="right">
+      <div class="score" id="score" title="Your score"><span class="lab">PTS</span><span id="scoreVal">0</span></div>
+      <button class="iconbtn" id="muteBtn" aria-label="Toggle sound" title="Sound">
+        <svg id="muteIcon" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9c1.5 1.5 1.5 4.5 0 6"/></svg>
+      </button>
+      <button class="iconbtn" id="helpBtn" aria-label="Hint" title="Hint">
+        <svg viewBox="0 0 24 24"><path d="M9 9a3 3 0 1 1 4 2.8c-1 .6-1 1-1 2.2"/><circle cx="12" cy="18" r=".6" fill="currentColor" stroke="none"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== LANDING ===== -->
+  <section id="landing">
+    <div class="land-inner">
+      <div class="kicker flick">A betterhomes experience</div>
+      <h1 class="serif">Escape the<br>Brokerage</h1>
+      <p class="sub">You are locked inside an old brokerage office. The lights are dead. The deals dried up long ago.<br><br>Find your way out.</p>
+      <button class="enter" id="enterBtn"><span class="dot"></span> Step Inside</button>
+    </div>
+  </section>
+
+  <!-- ===== SCENE ===== -->
+  <section id="scene" aria-label="The brokerage office">
+    <div class="stage" id="stage">
+      <div class="room" id="room">
+
+        <!-- window -->
+        <div class="layer window">
+          <div class="win-sky"></div>
+          <svg class="skyline" viewBox="0 0 300 120" preserveAspectRatio="none" aria-hidden="true">
+            <g fill="rgba(10,14,22,.85)">
+              <rect x="6" y="60" width="22" height="60"/>
+              <rect x="34" y="40" width="16" height="80"/>
+              <rect x="56" y="74" width="26" height="46"/>
+              <rect x="120" y="20" width="10" height="100"/>
+              <polygon points="125,4 132,20 118,20"/>
+              <rect x="150" y="52" width="20" height="68"/>
+              <rect x="176" y="34" width="14" height="86"/>
+              <rect x="198" y="66" width="30" height="54"/>
+              <rect x="240" y="46" width="18" height="74"/>
+              <rect x="264" y="70" width="28" height="50"/>
+            </g>
+          </svg>
+          <div class="win-sun"></div>
+          <div class="win-rain"></div>
+          <div class="win-glass"></div>
+          <div class="win-bars"></div>
+        </div>
+
+        <!-- pendant light -->
+        <div class="layer pendant"></div>
+        <div class="layer lightcone"></div>
+        <div class="layer bulb"></div>
+
+        <!-- wall logo -->
+        <div class="layer wallmark"><div class="bh brandmark">betterhomes</div><div class="tg">TRUST BETTER · GET BETTER</div></div>
+
+        <!-- marketing wall screen -->
+        <div class="layer mwall"><div class="grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="bar"></div></div>
+
+        <!-- shelf, books, trophy -->
+        <div class="layer shelf"></div>
+        <div class="layer books"><span></span><span></span><span></span><span></span><span></span></div>
+        <div class="layer trophy"><div class="cup"></div><div class="base"></div></div>
+
+        <!-- painting -->
+        <div class="layer painting"><div class="paint-art"></div></div>
+
+        <!-- desk + monitor + lamp -->
+        <div class="layer desk"></div>
+        <div class="layer monstand"></div>
+        <div class="layer monitor"><div class="mon-screen"></div><div class="mon-listings"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="mon-crack"></div></div>
+        <div class="layer lamp"><div class="arm"></div><div class="head"></div></div>
+
+        <!-- second chair + plant -->
+        <div class="layer chair"><div class="back"></div><div class="seat"></div><div class="leg"></div><div class="foot"></div></div>
+        <div class="layer plant"><div class="pot"></div><div class="leaf"></div><div class="leaf"></div><div class="leaf"></div><div class="leaf"></div><div class="leaf"></div></div>
+
+        <!-- fuse box (power) + safe (leadership) — the clue objects -->
+        <div class="layer fusebox"><span></span><span></span><span></span></div>
+        <div class="layer safe"><div class="dial"></div></div>
+
+        <!-- clutter / floor -->
+        <div class="layer clutter"></div>
+        <div class="layer floor"></div>
+
+        <!-- door -->
+        <div class="layer door" id="door">
+          <div class="exit">EXIT</div>
+          <div class="handle"></div>
+          <div class="slots" id="slots"></div>
+        </div>
+
+        <!-- ===== HOTSPOTS ===== positioned over the relevant objects -->
+        <button class="hot" data-puzzle="power"      style="left:84.5%;top:30%;width:9%;height:18%" aria-label="Fuse box">
+          <span class="aura"></span><span class="check"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span></button>
+        <button class="hot" data-puzzle="training"   style="left:35%;top:17%;width:16%;height:21%" aria-label="Crooked painting">
+          <span class="aura"></span><span class="check"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span></button>
+        <button class="hot" data-puzzle="marketing"  style="left:53%;top:53%;width:26%;height:28%" aria-label="Dead monitor">
+          <span class="aura"></span><span class="check"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span></button>
+        <button class="hot" data-puzzle="leadership" style="left:2%;top:60%;width:14%;height:24%" aria-label="Locked safe">
+          <span class="aura"></span><span class="check"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span></button>
+        <button class="hot" data-puzzle="brand"      style="left:6%;top:14%;width:30%;height:30%" aria-label="The window">
+          <span class="aura"></span><span class="check"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span></button>
+
+        <!-- the door hotspot -->
+        <button class="hot" id="doorHot" style="right:0;top:14%;width:7%;height:62%" aria-label="The door"><span class="aura"></span></button>
+
+        <!-- easter eggs -->
+        <button class="hot egg" data-egg="mug"    style="left:70%;top:62%;width:5%;height:7%" aria-label="Coffee mug"></button>
+        <button class="hot egg" data-egg="phone"  style="left:48%;top:60%;width:5%;height:8%" aria-label="Old phone"></button>
+        <button class="hot egg" data-egg="sticky" style="left:29%;top:43%;width:4%;height:6%" aria-label="Sticky note"></button>
+        <button class="hot egg" data-egg="dino"   style="left:61%;top:47%;width:3.5%;height:5%" aria-label="Tiny dinosaur"></button>
+      </div>
+    </div>
+    <div class="whisper" id="whisper">Tap anything that catches your eye.</div>
+  </section>
+
+  <!-- modal host -->
+  <div id="modal"><div class="modal-wrap"><div class="panel" id="panel"></div></div></div>
+
+  <!-- assembly + flash + ending -->
+  <div id="assemble"><div><div class="akey" id="akey"></div><div class="aturn" id="aturn">Turn the key</div></div></div>
+  <div id="flash"></div>
+  <div id="toast"></div>
+
+  <section id="ending">
+    <div class="end-sky"><div class="sun"></div></div>
+    <div class="end-inner">
+      <div class="lead serif">You didn't need to become better.<em>You needed a better environment.</em></div>
+      <div class="end-plat"><div class="t1">TRUST BETTER.</div><div class="t2">GET BETTER.</div></div>
+      <div class="end-bh brandmark"><b>betterhomes</b></div>
+
+      <button class="report-toggle" id="reportBtn">See your escape report ↓</button>
+      <div class="report" id="report">
+        <div class="rscore"><span id="rscoreVal">0</span><span class="pts">points</span></div>
+        <div class="rbreak" id="rbreak"></div>
+        <div class="rname" id="rname">
+          <input id="nameInput" maxlength="20" placeholder="Add your name to the board" autocomplete="off" />
+          <button id="submitScore">Submit</button>
+        </div>
+        <div class="board" id="board"></div>
+        <div class="bsource" id="bsource"></div>
+      </div>
+
+      <a class="end-cta" id="ctaBtn" href="https://www.bhomes.com" target="_blank" rel="noopener">Continue Your Journey <span>→</span></a>
+      <div class="end-meta" id="endMeta"></div>
+      <button class="share" id="shareBtn">Share your escape</button>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   ESCAPE THE BROKERAGE — engine
+   ========================================================================= */
+(function(){
+  const $ = (s,r)=> (r||document).querySelector(s);
+  const $$ = (s,r)=> Array.from((r||document).querySelectorAll(s));
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------------- AUDIO ENGINE (synthesized, no assets) ---------------- */
+  const Audio = (()=>{
+    let ctx=null, master=null, drone=null, droneFilter=null, muted=false;
+    function ensure(){
+      if(ctx) return;
+      try{
+        ctx = new (window.AudioContext||window.webkitAudioContext)();
+        master = ctx.createGain(); master.gain.value = 0.0; master.connect(ctx.destination);
+        // warm ambient drone
+        drone = ctx.createOscillator(); drone.type='sine'; drone.frequency.value=72;
+        const d2 = ctx.createOscillator(); d2.type='sine'; d2.frequency.value=108;
+        droneFilter = ctx.createBiquadFilter(); droneFilter.type='lowpass'; droneFilter.frequency.value=240;
+        const dg = ctx.createGain(); dg.gain.value=0.05;
+        drone.connect(droneFilter); d2.connect(droneFilter); droneFilter.connect(dg); dg.connect(master);
+        drone.start(); d2.start();
+        ramp(master.gain, muted?0:0.9, 1.2);
+      }catch(e){}
+    }
+    function ramp(param,to,t){ if(!ctx)return; const n=ctx.currentTime; param.cancelScheduledValues(n); param.setValueAtTime(param.value,n); param.linearRampToValueAtTime(to,n+t); }
+    function tone(freq,dur,type,gain,delay){
+      if(!ctx||muted) return;
+      const t0=ctx.currentTime+(delay||0);
+      const o=ctx.createOscillator(); o.type=type||'sine'; o.frequency.value=freq;
+      const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t0);
+      g.gain.exponentialRampToValueAtTime(gain||0.18,t0+0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001,t0+(dur||0.3));
+      o.connect(g); g.connect(master); o.start(t0); o.stop(t0+(dur||0.3)+0.05);
+    }
+    return {
+      ensure,
+      click(){ tone(420,0.06,'triangle',0.10); },
+      soft(){ tone(300,0.08,'sine',0.07); },
+      place(){ tone(540,0.10,'triangle',0.12); tone(810,0.10,'sine',0.06,0.02); },
+      deny(){ tone(150,0.18,'sawtooth',0.10); },
+      success(){ [523,659,784,1047].forEach((f,i)=>tone(f,0.5,'sine',0.16,i*0.09)); },
+      unlock(){ [392,523,659,784,1047].forEach((f,i)=>tone(f,0.7,'sine',0.18,i*0.12)); tone(1568,1.2,'sine',0.10,0.6); },
+      reveal(){ tone(880,0.6,'sine',0.10); tone(1320,0.6,'sine',0.06,0.05); },
+      warmUp(p){ if(droneFilter) ramp(droneFilter.frequency, 240+p*900, 1.6); },
+      note(f){ tone(f,0.34,'sine',0.16); tone(f*2,0.34,'sine',0.05,0.01); },
+      toggle(){ muted=!muted; if(master) ramp(master.gain, muted?0:0.9, 0.4); return muted; },
+      get muted(){return muted;}
+    };
+  })();
+
+  /* ---------------- ENVIRONMENT STATE ---------------- */
+  const state = {
+    solved: {}, count: 0, started: 0, items: [],
+    score: 0, hints: 0, eggs: {}, finalized: false
+  };
+  const PUZZLES = ['power','training','marketing','leadership','brand'];
+  const ITEM_ICON = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></svg>';
+
+  const room = $('#room');
+  function setEnv(){
+    const p = state.count/PUZZLES.length;
+    document.documentElement.style.setProperty('--p', p.toFixed(3));
+    document.documentElement.style.setProperty('--warm', (p*1).toFixed(3));
+    document.documentElement.style.setProperty('--bright', Math.min(1,p*1.05).toFixed(3));
+    Audio.warmUp(p);
+    FX.intensity(p);
+  }
+
+  /* build door slots */
+  const slotsEl = $('#slots');
+  PUZZLES.forEach(()=>{ const s=document.createElement('div'); s.className='slot'; s.innerHTML=ITEM_ICON; slotsEl.appendChild(s); });
+
+  /* ---------------- PARTICLE FIELD ---------------- */
+  const FX = (()=>{
+    const c=$('#fx'), x=c.getContext('2d'); let W,H,parts=[],p=0,raf;
+    function resize(){ W=c.width=innerWidth*devicePixelRatio; H=c.height=innerHeight*devicePixelRatio; }
+    function init(){ resize(); parts=[]; const n=reduceMotion?18:54;
+      for(let i=0;i<n;i++) parts.push({x:Math.random()*W,y:Math.random()*H,r:(Math.random()*1.6+0.4)*devicePixelRatio,
+        s:(Math.random()*0.3+0.05),d:Math.random()*Math.PI*2}); }
+    function loop(){
+      x.clearRect(0,0,W,H);
+      for(const a of parts){
+        a.y -= a.s*(0.4+p*1.4); a.x += Math.sin(a.d+=0.01)*0.2;
+        if(a.y<-10){ a.y=H+10; a.x=Math.random()*W; }
+        const cold='rgba(150,170,200,', warm='rgba(220,180,110,';
+        const col = (p>0?warm:cold)+ (0.10+p*0.35).toFixed(2)+')';
+        x.beginPath(); x.arc(a.x,a.y,a.r,0,7); x.fillStyle=col; x.fill();
+      }
+      raf=requestAnimationFrame(loop);
+    }
+    addEventListener('resize',resize);
+    return { start(){ init(); if(!reduceMotion){cancelAnimationFrame(raf);loop();} else {loop();cancelAnimationFrame(raf);x.clearRect(0,0,W,H);for(const a of parts){x.beginPath();x.arc(a.x,a.y,a.r,0,7);x.fillStyle='rgba(180,180,180,.2)';x.fill();}} },
+      intensity(v){ p=v; }, burst(){ if(reduceMotion)return; for(let i=0;i<24;i++){const a=parts[i%parts.length]; a.s=Math.random()*1.2+0.6;} } };
+  })();
+
+  /* ---------------- TOAST + WHISPER ---------------- */
+  let toastT;
+  function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2600); }
+  const WHISPERS = {
+    start:'Tap anything that catches your eye.',
+    power:'The room is still cold. Something needs power.',
+    explore:'Something changed. Keep looking — there is more.',
+    near:'One thing still stands between you and the door.',
+    door:'The door is sealed. Five things are missing.',
+  };
+  function whisper(msg){ $('#whisper').textContent=msg; }
+
+  /* ---------------- SCORING (diegetic) ---------------- */
+  const POINTS = { solve:1000, egg:500, noHint:1500, speedMax:2500 };
+  const scoreEl=$('#score'), scoreVal=$('#scoreVal');
+  function addScore(pts, atX, atY){
+    state.score += pts;
+    scoreVal.textContent = state.score.toLocaleString();
+    scoreEl.classList.add('show','bump');
+    clearTimeout(addScore._t); addScore._t=setTimeout(()=>scoreEl.classList.remove('bump'),340);
+    if(atX!=null) floatPts(pts, atX, atY);
+  }
+  function floatPts(pts, x, y){
+    const el=document.createElement('div'); el.className='fp'; el.textContent='+'+pts.toLocaleString();
+    el.style.left=x+'px'; el.style.top=y+'px'; document.body.appendChild(el);
+    setTimeout(()=>el.remove(),1300);
+  }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  /* ---------------- LEADERBOARD (local-first, global if API present) ---------------- */
+  const Board = {
+    key:'etb_board_v1',
+    _local(){ try{ return JSON.parse(localStorage.getItem(this.key)||'[]'); }catch(e){ return []; } },
+    _save(a){ try{ localStorage.setItem(this.key, JSON.stringify(a.slice(0,50))); }catch(e){} },
+    async top(){
+      try{ const r=await fetch('/api/leaderboard',{cache:'no-store'}); if(r.ok){ const d=await r.json(); return {scores:d.scores||[], source:'global'}; } }catch(e){}
+      return { scores:this._local().sort((a,b)=>b.score-a.score), source:'local' };
+    },
+    async submit(entry){
+      try{ const r=await fetch('/api/leaderboard',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(entry)});
+        if(r.ok){ const d=await r.json(); return {scores:d.scores||[], source:'global'}; } }catch(e){}
+      const a=this._local(); a.push(entry); a.sort((x,y)=>y.score-x.score); this._save(a); return {scores:a, source:'local'};
+    }
+  };
+
+  /* ---------------- IDLE HINT (never dead time) ---------------- */
+  let idleT;
+  function resetIdle(){
+    clearTimeout(idleT);
+    $$('.hot.hint').forEach(h=>h.classList.remove('hint'));
+    idleT=setTimeout(showHint, 8500);
+  }
+  function showHint(){
+    if($('#modal').classList.contains('open')) return resetIdle();
+    const next = $$('.hot[data-puzzle]').find(h=>!h.classList.contains('done'));
+    if(next){ next.classList.add('hint'); }
+    else { $('#doorHot').classList.add('hint'); }
+  }
+
+  /* ---------------- MODAL ---------------- */
+  const modal=$('#modal'), panel=$('#panel');
+  function openModal(html){ panel.innerHTML=html; modal.classList.add('open'); resetIdle(); }
+  function closeModal(){ modal.classList.remove('open'); }
+  modal.addEventListener('click',e=>{ if(e.target===modal) closeModal(); });
+
+  /* ---------------- PUZZLE CONTENT ---------------- */
+  const ADV = {
+    power:{tag:'Systems', icon:'<path d="M13 2L3 14h7l-1 8 10-12h-7z"/>',
+      old:'At the old brokerage, you fight the tools just to start your day.',
+      neu:'betterhomes gives you systems that already work — so you can sell, not troubleshoot.'},
+    training:{tag:'Training', icon:'<path d="M4 7l8-4 8 4-8 4z"/><path d="M4 7v6l8 4 8-4V7"/>',
+      old:'There, you were handed a desk and wished good luck.',
+      neu:'Here, the betterhomes Academy turns agents into top performers — on purpose.'},
+    marketing:{tag:'Marketing', icon:'<path d="M3 11l16-7-4 16-4-5-4 4z"/>',
+      old:'You paid for your own leads and chased dead listings.',
+      neu:'betterhomes puts the region’s biggest marketing engine behind every listing you take.'},
+    leadership:{tag:'Mentorship', icon:'<circle cx="12" cy="8" r="3.2"/><path d="M5 20c1.5-4 12.5-4 14 0"/>',
+      old:'No one had your back. Management was a closed door.',
+      neu:'Here, leaders sit beside you — mentors who win when you win.'},
+    brand:{tag:'The Brand', icon:'<path d="M12 3l2.5 5 5.5.8-4 4 .9 5.4L12 20l-4.9 2.2.9-5.4-4-4 5.5-.8z"/>',
+      old:'You spent every meeting explaining who you even worked for.',
+      neu:'betterhomes opens the door before you say a word. The name does the trust for you.'},
+  };
+
+  function showAdvantage(id, onContinue){
+    const a=ADV[id];
+    openModal(`<div class="adv">
+      <div class="badge"><svg viewBox="0 0 24 24">${a.icon}</svg></div>
+      <div class="vs">${a.tag} unlocked</div>
+      <div class="old">${a.old}</div>
+      <div class="new">${a.neu}</div>
+      <button class="cont" id="advCont">Continue</button>
+    </div>`);
+    Audio.success();
+    $('#advCont').onclick=()=>{ Audio.click(); closeModal(); if(onContinue)onContinue(); };
+  }
+
+  /* ===== PUZZLE 1: POWER — drag fuses into slots, flip master ===== */
+  function puzPower(done){
+    const symbols=['⚡','⚙️','\u{1F50C}'];
+    openModal(`<button class="pclose" id="px">&times;</button>
+      <div class="ptag">Restore the power</div>
+      <h2 class="serif">The Fuse Box</h2>
+      <p class="pdesc">The office is running on nothing. Drag each fuse into a free socket, then throw the master switch.</p>
+      <div class="fuse-stage">
+        <div class="slots-row" id="fslots">${symbols.map((_,i)=>`<div class="fslot" data-i="${i}"></div>`).join('')}</div>
+        <div class="tray-row" id="ftray">${symbols.map((s,i)=>`<div class="fuse" draggable="true" data-s="${i}">${s}</div>`).join('')}</div>
+        <button class="master" id="master">Master Switch</button>
+      </div>`);
+    $('#px').onclick=closeModal;
+    const slots=$$('#fslots .fslot'), master=$('#master');
+    let placed=0;
+    function check(){ if(placed>=3){ master.classList.add('ready'); Audio.reveal(); } }
+    // pointer-based drag (works touch + mouse)
+    $$('#ftray .fuse').forEach(f=>{
+      let drag=null,ghost=null;
+      const start=(e)=>{ e.preventDefault(); drag=f; f.classList.add('dragging'); Audio.soft();
+        ghost=f.cloneNode(true); ghost.style.position='fixed'; ghost.style.zIndex=200; ghost.style.pointerEvents='none';
+        ghost.style.opacity='.9'; ghost.classList.remove('dragging'); document.body.appendChild(ghost); move(e); };
+      const move=(e)=>{ if(!drag)return; const pt=e.touches?e.touches[0]:e;
+        ghost.style.left=(pt.clientX-25)+'px'; ghost.style.top=(pt.clientY-33)+'px';
+        slots.forEach(s=>{ const r=s.getBoundingClientRect(); const over=pt.clientX>r.left&&pt.clientX<r.right&&pt.clientY>r.top&&pt.clientY<r.bottom&&!s.classList.contains('filled');
+          s.classList.toggle('over',over); }); };
+      const end=(e)=>{ if(!drag)return; const pt=e.changedTouches?e.changedTouches[0]:e;
+        let dropped=false;
+        slots.forEach(s=>{ const r=s.getBoundingClientRect();
+          if(!dropped && !s.classList.contains('filled') && pt.clientX>r.left&&pt.clientX<r.right&&pt.clientY>r.top&&pt.clientY<r.bottom){
+            s.classList.add('filled'); s.innerHTML=f.innerHTML; s.style.fontSize='24px'; f.style.visibility='hidden'; placed++; dropped=true; Audio.place(); check();
+          } s.classList.remove('over'); });
+        if(!dropped) Audio.deny();
+        f.classList.remove('dragging'); if(ghost){ghost.remove();ghost=null;} drag=null; };
+      f.addEventListener('mousedown',start); f.addEventListener('touchstart',start,{passive:false});
+      addEventListener('mousemove',move); addEventListener('touchmove',move,{passive:false});
+      addEventListener('mouseup',end); addEventListener('touchend',end);
+    });
+    master.onclick=()=>{ if(!master.classList.contains('ready'))return Audio.deny();
+      master.textContent='POWER ON'; Audio.unlock(); setTimeout(()=>done(),420); };
+  }
+
+  /* ===== PUZZLE 2: TRAINING — straighten painting, find key, open drawer ===== */
+  function puzTraining(done){
+    openModal(`<button class="pclose" id="px">&times;</button>
+      <div class="ptag">Find what was hidden</div>
+      <h2 class="serif">The Crooked Picture</h2>
+      <p class="pdesc">Someone left in a hurry. Straighten the frame — drag it level — then take what was hidden behind it.</p>
+      <div class="find-stage" id="fstage">
+        <div class="fp-frame" id="frame"><div class="art"></div></div>
+        <div class="fp-key" id="fkey">\u{1F511}</div>
+        <div class="fp-lock" id="flock">\u{1F512}</div>
+      </div>
+      <div class="fp-note" id="fnote">Drag the frame to straighten it.</div>`);
+    $('#px').onclick=closeModal;
+    const frame=$('#frame'),key=$('#fkey'),lock=$('#flock'),note=$('#fnote'),stage=$('#fstage');
+    let rot=-9, dragging=false, lastX=0, straight=false;
+    const setR=()=>frame.style.transform=`translate(-50%,-50%) rotate(${rot}deg)`;
+    const startF=(e)=>{ if(straight)return; dragging=true; lastX=(e.touches?e.touches[0]:e).clientX; e.preventDefault(); };
+    const moveF=(e)=>{ if(!dragging)return; const cx=(e.touches?e.touches[0]:e).clientX; rot+=(cx-lastX)*0.25; lastX=cx;
+      rot=Math.max(-20,Math.min(20,rot)); setR();
+      if(Math.abs(rot)<2.2 && !straight){ straight=true; rot=0; setR(); frame.classList.add('level'); dragging=false;
+        Audio.reveal(); key.classList.add('show'); note.textContent='A key! Drag it to the lock.'; setupKey(); } };
+    const endF=()=>dragging=false;
+    frame.addEventListener('mousedown',startF); frame.addEventListener('touchstart',startF,{passive:false});
+    addEventListener('mousemove',moveF); addEventListener('touchmove',moveF,{passive:false});
+    addEventListener('mouseup',endF); addEventListener('touchend',endF);
+
+    function setupKey(){
+      let kd=false;
+      const ks=(e)=>{ kd=true; Audio.soft(); e.preventDefault(); km(e); };
+      const km=(e)=>{ if(!kd)return; const pt=e.touches?e.touches[0]:e; const r=stage.getBoundingClientRect();
+        key.style.left=((pt.clientX-r.left)/r.width*100)+'%'; key.style.top=((pt.clientY-r.top)/r.height*100)+'%';
+        const lr=lock.getBoundingClientRect(); const over=pt.clientX>lr.left&&pt.clientX<lr.right&&pt.clientY>lr.top&&pt.clientY<lr.bottom;
+        lock.classList.toggle('over',over); };
+      const ke=(e)=>{ if(!kd)return; kd=false; const pt=e.changedTouches?e.changedTouches[0]:e; const lr=lock.getBoundingClientRect();
+        if(pt.clientX>lr.left&&pt.clientX<lr.right&&pt.clientY>lr.top&&pt.clientY<lr.bottom){
+          lock.textContent='\u{1F513}'; key.style.opacity='0'; Audio.unlock(); note.textContent='Unlocked.'; setTimeout(()=>done(),480);
+        } else Audio.deny(); };
+      key.addEventListener('mousedown',ks); key.addEventListener('touchstart',ks,{passive:false});
+      addEventListener('mousemove',km); addEventListener('touchmove',km,{passive:false});
+      addEventListener('mouseup',ke); addEventListener('touchend',ke);
+    }
+  }
+
+  /* ===== PUZZLE 3: MARKETING — connect coloured cables ===== */
+  function puzMarketing(done){
+    const colors=['#c9a45c','#7fb4e0','#7fd6a0'];
+    const right=[2,0,1]; // shuffled mapping target index for each color
+    openModal(`<button class="pclose" id="px">&times;</button>
+      <div class="ptag">Reconnect the network</div>
+      <h2 class="serif">The Marketing Engine</h2>
+      <p class="pdesc">The listings went dark. Drag each cable to the port of the same colour to bring the marketing wall back to life.</p>
+      <div class="cable-stage">
+        <svg class="cable-svg" id="csvg" viewBox="0 0 400 300">
+          ${colors.map((c,i)=>`<circle class="port src" data-c="${i}" cx="60" cy="${60+i*90}" r="16" fill="${c}"/>`).join('')}
+          ${right.map((ci,slot)=>`<circle class="port dst" data-c="${colors.indexOf(colors[ci])}" data-slot="${slot}" cx="340" cy="${60+slot*90}" r="16" fill="${colors[ci]}" />`).join('')}
+        </svg>
+        <div class="hintline" id="chint">0 / 3 connected</div>
+      </div>`);
+    $('#px').onclick=closeModal;
+    // remap dst colors properly
+    const svg=$('#csvg'); const dsts=$$('.dst',svg); const order=[2,0,1];
+    dsts.forEach((d,i)=>{ d.setAttribute('fill',colors[order[i]]); d.dataset.c=order[i]; });
+    let connections=0; let active=null; let line=null; const NS='http://www.w3.org/2000/svg';
+    function pt(e){ const r=svg.getBoundingClientRect(); const c=e.touches?e.touches[0]:e;
+      return {x:(c.clientX-r.left)/r.width*400,y:(c.clientY-r.top)/r.height*300}; }
+    $$('.src',svg).forEach(s=>{
+      const start=(e)=>{ if(s.dataset.used)return; e.preventDefault(); active=s; Audio.soft();
+        line=document.createElementNS(NS,'path'); line.setAttribute('stroke',s.getAttribute('fill'));
+        line.setAttribute('stroke-width','5'); line.setAttribute('fill','none'); line.setAttribute('stroke-linecap','round');
+        svg.insertBefore(line,svg.firstChild); move(e); };
+      s.addEventListener('mousedown',start); s.addEventListener('touchstart',start,{passive:false});
+    });
+    function move(e){ if(!active)return; e.preventDefault(); const p=pt(e);
+      const sx=+active.getAttribute('cx'), sy=+active.getAttribute('cy');
+      line.setAttribute('d',`M${sx},${sy} C${sx+90},${sy} ${p.x-90},${p.y} ${p.x},${p.y}`); }
+    function end(e){ if(!active)return; const p=pt(e);
+      let hit=null; dsts.forEach(d=>{ const dx=+d.getAttribute('cx'),dy=+d.getAttribute('cy');
+        if(!d.dataset.used && Math.hypot(p.x-dx,p.y-dy)<26 && d.dataset.c===active.dataset.c) hit=d; });
+      if(hit){ const dx=+hit.getAttribute('cx'),dy=+hit.getAttribute('cy'),sx=+active.getAttribute('cx'),sy=+active.getAttribute('cy');
+        line.setAttribute('d',`M${sx},${sy} C${sx+90},${sy} ${dx-90},${dy} ${dx},${dy}`);
+        line.style.filter='drop-shadow(0 0 6px '+active.getAttribute('fill')+')';
+        active.dataset.used='1'; hit.dataset.used='1'; connections++; Audio.place();
+        $('#chint').textContent=connections+' / 3 connected';
+        if(connections>=3){ Audio.unlock(); setTimeout(()=>done(),520); }
+      } else { line.remove(); Audio.deny(); }
+      active=null; line=null; }
+    addEventListener('mousemove',move); addEventListener('touchmove',move,{passive:false});
+    addEventListener('mouseup',end); addEventListener('touchend',end);
+  }
+
+  /* ===== PUZZLE 4: LEADERSHIP — repeat the sequence (memory) ===== */
+  function puzLeadership(done){
+    openModal(`<button class="pclose" id="px">&times;</button>
+      <div class="ptag">Crack the safe</div>
+      <h2 class="serif">The Mentor's Safe</h2>
+      <p class="pdesc">The previous top agent left the combination as a rhythm. Watch it once, then repeat it back.</p>
+      <div class="simon-grid" id="sgrid">
+        ${[0,1,2,3].map(i=>`<button class="sbtn" data-i="${i}"><span class="glow"></span></button>`).join('')}
+      </div>
+      <div class="simon-status" id="sstat">Watch carefully…</div>`);
+    $('#px').onclick=closeModal;
+    const btns=$$('.sbtn'), stat=$('#sstat');
+    const freqs=[523,392,659,330];
+    const seq=[0,2,1,3,0]; let step=0, playing=true;
+    function demo(){ playing=true; step=0; stat.textContent='Watch carefully…';
+      seq.forEach((s,k)=> setTimeout(()=>{ btns[s].classList.add('lit'); Audio.note(freqs[s]);
+        setTimeout(()=>btns[s].classList.remove('lit'),340); }, 600+k*620));
+      setTimeout(()=>{ playing=false; stat.textContent='Now repeat the sequence.'; }, 600+seq.length*620+200);
+    }
+    btns.forEach((b,i)=> b.onclick=()=>{ if(playing)return; b.classList.add('lit'); Audio.note(freqs[i]);
+      setTimeout(()=>b.classList.remove('lit'),220);
+      if(i===seq[step]){ step++; if(step>=seq.length){ playing=true; stat.textContent='Safe open.'; Audio.unlock(); setTimeout(()=>done(),520);} }
+      else { step=0; Audio.deny(); stat.textContent='Not quite. Watch again…'; setTimeout(demo,700); } });
+    setTimeout(demo,500);
+  }
+
+  /* ===== PUZZLE 5: BRAND — UV reveal ===== */
+  function puzBrand(done){
+    openModal(`<button class="pclose" id="px">&times;</button>
+      <div class="ptag">Reveal the hidden mark</div>
+      <h2 class="serif">The UV Light</h2>
+      <p class="pdesc">There's a message on this wall you were never meant to see. Move the light across it to reveal what's really here.</p>
+      <div class="uv-stage" id="uv">
+        <div class="uv-hidden" id="uvh"><div class="bh brandmark">betterhomes</div><div class="tg">TRUST BETTER · GET BETTER</div></div>
+        <div class="uv-light" id="uvl"></div>
+      </div>
+      <div class="uv-meter"><i id="uvm"></i></div>`);
+    $('#px').onclick=closeModal;
+    const uv=$('#uv'),light=$('#uvl'),hidden=$('#uvh'),meter=$('#uvm');
+    let visited=new Set(), grid=10, total=0, doneFlag=false;
+    function move(e){ const r=uv.getBoundingClientRect(); const c=e.touches?e.touches[0]:e;
+      const x=c.clientX-r.left, y=c.clientY-r.top;
+      if(x<0||y<0||x>r.width||y>r.height) return;
+      light.style.left=x+'px'; light.style.top=y+'px';
+      const gx=Math.floor(x/r.width*grid), gy=Math.floor(y/r.height*grid);
+      const key=gx+'-'+gy; if(!visited.has(key)){ visited.add(key); Audio.soft();
+        const reveal=Math.min(1,visited.size/42);
+        hidden.style.color='rgba(201,164,92,'+(0.2+reveal*0.8)+')';
+        hidden.style.textShadow='0 0 '+(reveal*30)+'px rgba(150,120,255,'+reveal+')';
+        meter.style.width=(reveal*100)+'%';
+        if(reveal>=0.85 && !doneFlag){ doneFlag=true; Audio.unlock(); hidden.style.color='var(--gold)';
+          setTimeout(()=>done(),700); } }
+    }
+    uv.addEventListener('mousemove',move); uv.addEventListener('touchmove',move,{passive:false});
+    uv.addEventListener('touchstart',move,{passive:false});
+  }
+
+  const PUZZLE_FN = { power:puzPower, training:puzTraining, marketing:puzMarketing, leadership:puzLeadership, brand:puzBrand };
+
+  /* ---------------- SOLVE FLOW ---------------- */
+  function solve(id, hotEl){
+    if(state.solved[id]) return;
+    state.solved[id]=true; state.count++; state.items.push(id);
+    if(hotEl) hotEl.classList.add('done');
+    // THE TRANSFORMATION: reveal this advantage's objects in the room
+    room.classList.add('has-'+id);
+    // fill a door slot + award the advantage
+    const slot = slotsEl.children[state.count-1];
+    if(slot){ slot.classList.add('filled'); const r=slot.getBoundingClientRect(); addScore(POINTS.solve, r.left+r.width/2, r.top+r.height/2); }
+    else addScore(POINTS.solve);
+    setEnv(); FX.burst();
+    closeModal();
+    setTimeout(()=> showAdvantage(id, ()=>{
+      if(state.count>=PUZZLES.length){ whisper(WHISPERS.door); toast('The door is now active'); $('#doorHot').classList.add('ready'); }
+      else if(state.count>=PUZZLES.length-1){ whisper(WHISPERS.near); }
+      else { whisper(WHISPERS.explore); toast(ADV[id].tag+' restored'); }
+      resetIdle();
+    }), 380);
+  }
+
+  /* ---------------- HOTSPOT WIRING ---------------- */
+  $$('.hot[data-puzzle]').forEach(h=>{
+    h.addEventListener('click',()=>{ resetIdle(); Audio.click();
+      const id=h.dataset.puzzle;
+      if(state.solved[id]){ toast('Already done — '+ADV[id].tag); return; }
+      PUZZLE_FN[id](()=> solve(id,h));
+    });
+  });
+
+  // easter eggs — optional discoveries, each worth +500 the first time
+  const EGGS={
+    mug:'☕ "World’s Okayest Broker" — found in the sink, of course.',
+    phone:'☎️ 14 missed calls. All from leads that went cold months ago.',
+    sticky:'📝 A sticky note: "Ask for better leads." It was never sent.',
+    dino:'🦖 A tiny plastic dinosaur. Extinct — like the old way of selling.'
+  };
+  $$('.hot.egg').forEach(h=> h.addEventListener('click',()=>{ Audio.soft(); resetIdle();
+    const id=h.dataset.egg;
+    if(!state.eggs[id]){ state.eggs[id]=true; const r=h.getBoundingClientRect();
+      addScore(POINTS.egg, r.left+r.width/2, r.top+r.height/2); }
+    toast(EGGS[id]||'✨'); }));
+
+  // door
+  const doorHot=$('#doorHot'), door=$('#door');
+  doorHot.addEventListener('click',()=>{ resetIdle();
+    if(state.count<PUZZLES.length){ Audio.deny();
+      door.animate([{transform:'translateX(0)'},{transform:'translateX(-4px)'},{transform:'translateX(4px)'},{transform:'translateX(0)'}],{duration:300});
+      toast((PUZZLES.length-state.count)+' things still missing'); whisper(WHISPERS.door);
+      $$('.slot:not(.filled)').forEach(s=>s.animate([{opacity:1},{opacity:.3},{opacity:1}],{duration:600}));
+      return;
+    }
+    Audio.click(); door.classList.add('unlocked'); $('.exit',door).textContent='betterhomes';
+    runAssembly();
+  });
+
+  /* ---------------- KEY ASSEMBLY + ENDING ---------------- */
+  function runAssembly(){
+    const wrap=$('#assemble'), akey=$('#akey'); wrap.classList.add('show');
+    const frags=['⚡','\u{1F4DA}','\u{1F4E1}','\u{1F3C6}','⭐'];
+    akey.innerHTML = frags.map((f,i)=>`<div class="frag" style="transform:translate(-50%,-50%) rotate(${i*72}deg) translateY(-90px)">${f}</div>`).join('')
+      + `<div class="core"><svg viewBox="0 0 100 100"><circle cx="50" cy="34" r="20"/><circle cx="50" cy="34" r="8" fill="#0b0c0e"/><rect x="46" y="50" width="8" height="40"/><rect x="54" y="74" width="12" height="7"/><rect x="54" y="84" width="9" height="7"/></svg></div>`;
+    Audio.reveal();
+    requestAnimationFrame(()=>{ requestAnimationFrame(()=>{
+      $$('.frag',akey).forEach(f=>{ f.style.transform='translate(-50%,-50%) scale(.2)'; f.style.opacity='0'; });
+      setTimeout(()=>{ akey.classList.add('formed'); Audio.unlock(); $('#aturn').classList.add('show'); }, 900);
+    });});
+    $('#aturn').onclick=()=>{}; // decorative
+    setTimeout(()=>{ // auto turn + flash
+      Audio.success(); $('#aturn').textContent='The lock releases…';
+      $('#flash').classList.add('on');
+      setTimeout(()=>{ wrap.classList.remove('show'); showEnding(); }, 1300);
+    }, 2600);
+  }
+
+  function fmtTime(ms){ const s=Math.round(ms/1000); const m=Math.floor(s/60); return m+':'+String(s%60).padStart(2,'0'); }
+  function showEnding(){
+    state.endedAt = Date.now();
+    const t = state.started? state.endedAt-state.started : 0;
+    $('#scene').classList.remove('live');
+    $('#ending').classList.add('show');
+    $('#endMeta').textContent = 'Escaped in '+fmtTime(t)+' · '+state.count+' advantages · '+Object.keys(state.eggs).length+' secrets';
+    setTimeout(()=> $('#flash').classList.remove('on'), 400);
+    Audio.warmUp(1);
+  }
+
+  /* ----- score breakdown ----- */
+  function finalizeScore(){
+    const elapsed = (state.endedAt||Date.now()) - (state.started||Date.now());
+    const sec = Math.round(elapsed/1000);
+    const eggCount = Object.keys(state.eggs).length;
+    let speed; if(sec<=90) speed=POINTS.speedMax; else if(sec>=420) speed=0;
+      else speed=Math.round(POINTS.speedMax*(1-(sec-90)/(420-90)));
+    const noHint = state.hints===0 ? POINTS.noHint : 0;
+    if(!state.finalized){ state.finalized=true; state.score += speed + noHint; scoreVal.textContent=state.score.toLocaleString(); }
+    const rows=[
+      {label:`${state.count} advantage${state.count>1?'s':''} unlocked`, value:state.count*POINTS.solve},
+      {label: eggCount?`${eggCount} secret${eggCount>1?'s':''} found`:'No secrets found', value:eggCount*POINTS.egg, dim:!eggCount},
+      {label: state.hints===0?'Escaped with no hints':`Hints used: ${state.hints}`, value:noHint, dim:state.hints>0},
+      {label:`Speed bonus · ${fmtTime(elapsed)}`, value:speed, dim:!speed},
+    ];
+    return {total:state.score, rows, sec};
+  }
+  function animateScore(to){
+    const el=$('#rscoreVal'); let v=0; const dur=1100, t0=performance.now();
+    (function step(now){ const k=Math.min(1,(now-t0)/dur); v=Math.round(to*(1-Math.pow(1-k,3)));
+      el.textContent=v.toLocaleString(); if(k<1) requestAnimationFrame(step); })(t0);
+  }
+  function renderBreakdown(rows){
+    const wrap=$('#rbreak'); wrap.innerHTML='';
+    rows.forEach((r,i)=>{ const el=document.createElement('div'); el.className='rrow'+(r.dim?' dim':'');
+      el.innerHTML=`<span>${escapeHtml(r.label)}</span><span class="v">+${r.value.toLocaleString()}</span>`;
+      wrap.appendChild(el); setTimeout(()=>el.classList.add('in'), 250+i*160); });
+  }
+  function brow(rank, s, you){
+    const el=document.createElement('div'); el.className='brow'+(you && s.ts===you.ts?' you':'');
+    el.innerHTML=`<span class="rk">${rank}</span><span class="nm">${escapeHtml(s.name||'Anonymous')}</span><span class="sc">${(s.score||0).toLocaleString()}</span>`;
+    return el;
+  }
+  function renderBoard(scores, you, source){
+    const board=$('#board'); board.innerHTML='';
+    const head=document.createElement('div'); head.className='bhead';
+    head.innerHTML='<span>Rank · Name</span><span>Score</span>'; board.appendChild(head);
+    const top=scores.slice(0,10);
+    top.forEach((s,i)=> board.appendChild(brow(i+1,s,you)));
+    const youIdx = you ? scores.findIndex(s=>s.ts===you.ts) : -1;
+    if(youIdx>=10) board.appendChild(brow(youIdx+1, scores[youIdx], you));
+    $('#bsource').textContent = source==='global' ? 'Global leaderboard' : 'Saved on this device';
+    $$('.brow',board).forEach((r,i)=> setTimeout(()=>r.classList.add('in'), 60*i));
+  }
+
+  let reportOpen=false;
+  $('#reportBtn').addEventListener('click', async ()=>{
+    if(reportOpen) return; reportOpen=true; Audio.success();
+    $('#reportBtn').style.display='none';
+    const bd=finalizeScore();
+    $('#report').classList.add('open');
+    animateScore(bd.total);
+    renderBreakdown(bd.rows);
+    const {scores, source} = await Board.top();
+    renderBoard(scores, null, source);
+  });
+  async function submitToBoard(){
+    const btn=$('#submitScore'), input=$('#nameInput');
+    const name=(input.value||'').trim().slice(0,20) || 'Anonymous';
+    btn.disabled=true; btn.textContent='…';
+    const entry={ name, score:state.score, time:Math.round(((state.endedAt||0)-(state.started||0))/1000), ts:Date.now() };
+    const {scores, source} = await Board.submit(entry);
+    renderBoard(scores, entry, source);
+    $('#rname').style.display='none';
+    Audio.reveal();
+  }
+  $('#submitScore').addEventListener('click', submitToBoard);
+  $('#nameInput').addEventListener('keydown', e=>{ if(e.key==='Enter') submitToBoard(); });
+
+  $('#shareBtn').addEventListener('click',async ()=>{
+    const t = (state.endedAt||Date.now()) - (state.started||Date.now());
+    const sc = state.finalized ? state.score : (state.count*POINTS.solve);
+    const text = `I escaped the brokerage in ${fmtTime(t)} and scored ${sc.toLocaleString()} points. Turns out I wasn’t escaping a room — I was escaping the wrong company. 🔑 Think you can beat me? betterhomes · TRUST BETTER. GET BETTER.`;
+    try{ if(navigator.share){ await navigator.share({title:'Escape the Brokerage',text}); }
+      else { await navigator.clipboard.writeText(text); toast('Copied — challenge a colleague'); } }
+    catch(e){ try{ await navigator.clipboard.writeText(text); toast('Copied to clipboard'); }catch(_){ toast('Share: '+text); } }
+  });
+
+  /* ---------------- CONTROLS ---------------- */
+  $('#muteBtn').addEventListener('click',function(){
+    Audio.ensure(); const m=Audio.toggle(); this.style.opacity=m?0.4:1;
+    $('#muteIcon').innerHTML = m
+      ? '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M22 9l-6 6M16 9l6 6"/>'
+      : '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9c1.5 1.5 1.5 4.5 0 6"/>';
+  });
+  $('#helpBtn').addEventListener('click',()=>{ Audio.click(); state.hints++; showHint(); toast('Follow the glow'); });
+
+  /* ---------------- BOOT ---------------- */
+  function enter(){
+    Audio.ensure();
+    $('#landing').classList.add('gone');
+    $('#scene').classList.add('live');
+    state.started=Date.now();
+    FX.start();
+    setEnv();
+    scoreEl.classList.add('show');
+    whisper(WHISPERS.start);
+    resetIdle();
+    // gentle first nudge
+    setTimeout(()=>{ const f=$$('.hot[data-puzzle]')[0]; if(f && !modal.classList.contains('open')) toast('Try the fuse box on the wall'); }, 2600);
+  }
+  $('#enterBtn').addEventListener('click',enter);
+
+  // meaningful interaction resets idle (NOT mousemove — the beacon should still
+  // surface when a player is moving the cursor but hasn't actually progressed)
+  ['click','keydown','touchstart'].forEach(ev=> document.addEventListener(ev, ()=>{ if($('#scene').classList.contains('live')) resetIdle(); }, {passive:true}));
+
+  // keyboard: Escape closes modal
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+})();
+</script>
+</body>
+</html>

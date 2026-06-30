@@ -1,0 +1,7 @@
+{
+  "name": "escape-the-brokerage",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Escape the Brokerage — an interactive recruitment experience for betterhomes Dubai.",
+  "engines": { "node": ">=18" }
+}
