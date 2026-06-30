@@ -6,3 +6,5 @@ node_modules/
 .env.local
 # build-only artifact (regenerated from index.html for the hosted preview)
 artifact.html
+
+.claude/
