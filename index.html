@@ -306,24 +306,38 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
 .slot svg{width:10px;height:10px;opacity:0;transform:scale(.5);transition:.5s;fill:var(--gold-soft)}
 .slot.filled svg{opacity:1;transform:none}
 
-/* --- HOTSPOTS — invisible clickable zones with breathing aura --- */
-.hot{position:absolute;z-index:20;border:none;background:transparent;border-radius:10px;
-  display:grid;place-items:center;transition:.3s}
-.hot::before{content:"";position:absolute;inset:-6%;border-radius:14px;
-  box-shadow:0 0 0 1px rgba(201,164,92,.0);transition:.4s}
-.hot .aura{width:18px;height:18px;border-radius:50%;background:var(--gold);
-  box-shadow:0 0 0 0 rgba(201,164,92,.6);animation:beacon 2.6s infinite;opacity:.0;transition:.4s}
-.hot:not(.done):hover .aura,.hot.hint .aura{opacity:.9}
-.hot:not(.done):hover::before{box-shadow:0 0 0 1px rgba(201,164,92,.5),0 0 40px rgba(201,164,92,.25) inset}
+/* --- HOTSPOTS — every interactive object carries a persistent breathing glow
+   (visible on desktop AND touch, since there is no hover on mobile) --- */
+.hot{position:absolute;z-index:20;border:none;background:transparent;border-radius:12px;
+  display:grid;place-items:center;transition:.3s;min-width:44px;min-height:44px}
+.hot::before{content:"";position:absolute;inset:-6%;border-radius:16px;
+  box-shadow:0 0 0 1px rgba(201,164,92,0);transition:.4s}
+/* resting state: a soft, always-on gold "tap here" pulse on the object */
+.hot .aura{position:relative;width:15px;height:15px;border-radius:50%;background:var(--gold);opacity:.6;
+  box-shadow:0 0 12px 2px rgba(201,164,92,.5);animation:pulse 2.8s ease-in-out infinite;
+  transition:opacity .4s, transform .4s, box-shadow .4s}
+.hot .aura::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:1px solid rgba(201,164,92,.55);
+  animation:ring 2.8s ease-out infinite}
+/* escalate: hover (desktop), directed hint, or the one-time intro "attract" ripple */
+.hot:not(.done):hover .aura,.hot.hint .aura,.hot.attract .aura{opacity:1;transform:scale(1.3);
+  box-shadow:0 0 24px 7px rgba(201,164,92,.8)}
+.hot:not(.done):hover::before,.hot.hint::before,.hot.attract::before{box-shadow:0 0 0 1px rgba(201,164,92,.55),0 0 46px rgba(201,164,92,.3) inset}
 .hot:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 .hot.done{cursor:default}
-.hot.done .aura{opacity:0 !important;animation:none}
+.hot.done .aura,.hot.done .aura::after{opacity:0 !important;animation:none}
 .hot.done .check{opacity:1;transform:scale(1)}
+/* the door stays dark until all five advantages are collected */
+#doorHot .aura{opacity:0;animation:none}
+#doorHot .aura::after{animation:none;opacity:0}
+#doorHot.ready .aura{opacity:.85;animation:pulse 2s ease-in-out infinite}
+#doorHot.ready .aura::after{animation:ring 2s ease-out infinite}
 .check{position:absolute;width:22px;height:22px;border-radius:50%;background:rgba(201,164,92,.95);
   display:grid;place-items:center;opacity:0;transform:scale(.4);transition:.5s cubic-bezier(.16,1,.3,1)}
 .check svg{width:12px;height:12px;stroke:#0b0c0e;stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .hot.hint{animation:hotnudge 1.4s ease-in-out infinite}
 @keyframes hotnudge{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.16)}}
+@keyframes ring{0%{transform:scale(.6);opacity:.75}100%{transform:scale(2.8);opacity:0}}
 @keyframes beacon{0%{box-shadow:0 0 0 0 rgba(201,164,92,.55)}70%{box-shadow:0 0 0 16px rgba(201,164,92,0)}100%{box-shadow:0 0 0 0 rgba(201,164,92,0)}}
 @keyframes sway{from{transform:translateX(-50%) rotate(-4deg)}to{transform:translateX(-50%) rotate(4deg)}}
 
@@ -351,7 +365,7 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
 .modal-wrap{position:relative}
 
 /* puzzle: fuse drag */
-.fuse-stage{display:flex;flex-direction:column;gap:18px;align-items:center}
+.fuse-stage{display:flex;flex-direction:column;gap:18px;align-items:center;position:relative}
 .slots-row,.tray-row{display:flex;gap:14px;justify-content:center}
 .fslot{width:62px;height:78px;border-radius:8px;border:2px dashed rgba(201,164,92,.4);
   display:grid;place-items:center;transition:.3s;background:rgba(255,255,255,.02)}
@@ -375,16 +389,44 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
 .hintline{text-align:center;font-size:12px;color:rgba(233,230,223,.45);margin-top:6px}
 
 /* puzzle: simon */
-.simon-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:min(300px,80vw);margin:0 auto}
-.sbtn{aspect-ratio:1;border-radius:16px;border:1px solid rgba(255,255,255,.08);transition:.15s;
-  background:#1a1c22;position:relative;overflow:hidden}
+.simon-turn{text-align:center;margin-bottom:16px;font-size:14px;letter-spacing:.24em;text-transform:uppercase;
+  font-weight:600;color:var(--gold);transition:.3s}
+.simon-turn .sub{display:block;font-size:11px;letter-spacing:.12em;color:rgba(233,230,223,.5);margin-top:5px;font-weight:400;text-transform:none}
+.simon-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:min(300px,80vw);margin:0 auto;position:relative;transition:opacity .3s}
+.simon-grid.watching{opacity:.96}
+.simon-grid.watching .sbtn{cursor:default}
+.sbtn{aspect-ratio:1;border-radius:16px;border:1px solid rgba(255,255,255,.08);transition:transform .15s, box-shadow .15s;
+  background:#1a1c22;position:relative;overflow:hidden;display:grid;place-items:center}
 .sbtn .glow{position:absolute;inset:0;opacity:0;transition:.18s}
+.sbtn .num{position:relative;z-index:2;font-size:24px;font-weight:700;color:rgba(255,255,255,0);
+  font-variant-numeric:tabular-nums;transition:color .2s;pointer-events:none}
 .sbtn.lit .glow{opacity:1}
+.sbtn.lit{transform:scale(1.05);box-shadow:0 0 34px -4px rgba(201,164,92,.6)}
+.sbtn.lit .num{color:rgba(255,255,255,.95)}
 .sbtn:nth-child(1) .glow{background:radial-gradient(circle,#e4c98a,#caa45c)}
 .sbtn:nth-child(2) .glow{background:radial-gradient(circle,#7fb4e0,#3f7fc0)}
 .sbtn:nth-child(3) .glow{background:radial-gradient(circle,#7fd6a0,#3fa060)}
 .sbtn:nth-child(4) .glow{background:radial-gradient(circle,#e0a0a0,#c05050)}
-.simon-status{text-align:center;margin-top:18px;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:rgba(233,230,223,.5)}
+.simon-status{text-align:center;margin-top:16px;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:rgba(233,230,223,.5)}
+.simon-again{margin:14px auto 0;display:block;padding:9px 22px;border-radius:100px;
+  border:1px solid rgba(201,164,92,.4);color:var(--gold-soft);font-size:11px;letter-spacing:.14em;text-transform:uppercase;transition:.3s}
+.simon-again:hover{background:rgba(201,164,92,.12)}
+
+/* reusable "ghost" demo cursor — shows the gesture inside any puzzle */
+.ghost{position:absolute;z-index:60;width:30px;height:30px;border-radius:50%;pointer-events:none;
+  border:2px solid var(--gold-soft);background:radial-gradient(circle,rgba(201,164,92,.45),transparent 68%);
+  box-shadow:0 0 18px rgba(201,164,92,.7);transform:translate(-50%,-50%);left:0;top:0;transition:opacity .35s}
+.ghost::after{content:"";position:absolute;inset:-7px;border-radius:50%;border:1px solid rgba(201,164,92,.5);
+  animation:ghostring 1.3s ease-out infinite}
+@keyframes ghostring{0%{transform:scale(.6);opacity:.8}100%{transform:scale(1.7);opacity:0}}
+.ghost-label{position:absolute;z-index:60;pointer-events:none;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--gold-soft);background:rgba(10,11,14,.7);padding:5px 12px;border-radius:100px;transform:translate(-50%,-50%);
+  border:1px solid rgba(201,164,92,.3);white-space:nowrap;transition:opacity .35s}
+
+/* points that fly up into the total score */
+.scorefly{position:fixed;z-index:92;pointer-events:none;color:var(--gold-soft);font-weight:700;
+  font-size:clamp(18px,3.4vw,30px);font-variant-numeric:tabular-nums;text-shadow:0 2px 18px rgba(201,164,92,.7);
+  transform:translate(-50%,-50%)}
 
 /* puzzle: UV reveal */
 .uv-stage{position:relative;width:100%;aspect-ratio:16/10;border-radius:12px;overflow:hidden;
@@ -535,9 +577,11 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
 .brow.you .rk{opacity:1;color:var(--gold-soft)}
 .bsource{text-align:center;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(26,18,8,.4);margin-top:12px}
 
-/* reduced motion */
+/* reduced motion — keep the glows VISIBLE (static), just stop the motion */
 @media (prefers-reduced-motion: reduce){
   *{animation-duration:.001ms !important;transition-duration:.2s !important}
+  .hot:not(.done) .aura{opacity:.7 !important}
+  .hot .aura::after,.ghost::after{display:none}
 }
 @media (max-width:640px){
   .chrome{font-size:10px}
@@ -668,7 +712,7 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
         <button class="hot egg" data-egg="dino"   style="left:61%;top:47%;width:3.5%;height:5%" aria-label="Tiny dinosaur"></button>
       </div>
     </div>
-    <div class="whisper" id="whisper">Tap anything that catches your eye.</div>
+    <div class="whisper" id="whisper">Five things in this room still glow. Tap one to begin.</div>
   </section>
 
   <!-- modal host -->
@@ -809,9 +853,9 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
   let toastT;
   function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2600); }
   const WHISPERS = {
-    start:'Tap anything that catches your eye.',
+    start:'Five things in this room still glow. Tap one to begin.',
     power:'The room is still cold. Something needs power.',
-    explore:'Something changed. Keep looking — there is more.',
+    explore:'Something changed. Keep tapping what glows — there is more.',
     near:'One thing still stands between you and the door.',
     door:'The door is sealed. Five things are missing.',
   };
@@ -820,17 +864,32 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
   /* ---------------- SCORING (diegetic) ---------------- */
   const POINTS = { solve:1000, egg:500, noHint:1500, speedMax:2500 };
   const scoreEl=$('#score'), scoreVal=$('#scoreVal');
-  function addScore(pts, atX, atY){
-    state.score += pts;
-    scoreVal.textContent = state.score.toLocaleString();
-    scoreEl.classList.add('show','bump');
-    clearTimeout(addScore._t); addScore._t=setTimeout(()=>scoreEl.classList.remove('bump'),340);
-    if(atX!=null) floatPts(pts, atX, atY);
+  let displayScore=0;
+  function setScoreText(n){ scoreVal.textContent=Math.round(n).toLocaleString(); }
+  function popChip(){ scoreEl.classList.add('bump'); clearTimeout(popChip._t); popChip._t=setTimeout(()=>scoreEl.classList.remove('bump'),360); }
+  function countUp(to){
+    const from=displayScore, dur=560, t0=performance.now();
+    (function step(now){ const k=Math.min(1,(now-t0)/dur); setScoreText(from+(to-from)*(1-Math.pow(1-k,3)));
+      if(k<1) requestAnimationFrame(step); else { displayScore=to; setScoreText(to); } })(t0);
   }
-  function floatPts(pts, x, y){
-    const el=document.createElement('div'); el.className='fp'; el.textContent='+'+pts.toLocaleString();
-    el.style.left=x+'px'; el.style.top=y+'px'; document.body.appendChild(el);
-    setTimeout(()=>el.remove(),1300);
+  // points POP at the object, arc up into the total, then the total counts up
+  function addScore(pts, atX, atY){
+    state.score += pts; scoreEl.classList.add('show');
+    if(atX==null || reduceMotion){ popChip(); countUp(state.score); return; }
+    const fly=document.createElement('div'); fly.className='scorefly'; fly.textContent='+'+pts.toLocaleString();
+    fly.style.left=atX+'px'; fly.style.top=atY+'px'; document.body.appendChild(fly);
+    fly.animate([{transform:'translate(-50%,-50%) scale(.4)',opacity:0},{transform:'translate(-50%,-50%) scale(1.28)',opacity:1}],
+      {duration:300,easing:'cubic-bezier(.16,1,.3,1)',fill:'forwards'});
+    setTimeout(()=>{
+      const r=scoreEl.getBoundingClientRect(), tx=r.left+r.width/2, ty=r.top+r.height/2;
+      const dx=tx-atX, dy=ty-atY;
+      const a=fly.animate([
+        {transform:'translate(-50%,-50%) scale(1.15)',opacity:1,offset:0},
+        {transform:`translate(calc(-50% + ${dx*0.5}px),calc(-50% + ${dy*0.5-46}px)) scale(1)`,opacity:1,offset:.55},
+        {transform:`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(.35)`,opacity:0,offset:1}
+      ],{duration:700,easing:'cubic-bezier(.5,0,.7,1)',fill:'forwards'});
+      a.onfinish=()=>{ fly.remove(); popChip(); countUp(state.score); Audio.place(); };
+    }, 480);
   }
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
@@ -855,7 +914,8 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
   function resetIdle(){
     clearTimeout(idleT);
     $$('.hot.hint').forEach(h=>h.classList.remove('hint'));
-    idleT=setTimeout(showHint, 8500);
+    // rescue a confused first-timer fast; relax the cadence once they're moving
+    idleT=setTimeout(showHint, state.count===0 ? 4200 : 8500);
   }
   function showHint(){
     if($('#modal').classList.contains('open')) return resetIdle();
@@ -869,6 +929,47 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
   function openModal(html){ panel.innerHTML=html; modal.classList.add('open'); resetIdle(); }
   function closeModal(){ modal.classList.remove('open'); }
   modal.addEventListener('click',e=>{ if(e.target===modal) closeModal(); });
+
+  /* ---------------- GESTURE DEMO ----------------
+     A pulsing "ghost" cursor that shows the required gesture INSIDE a puzzle,
+     looping until the player touches anything (then it fades). Teaches by
+     showing, not by text. `host` must be position:relative. `steps` are
+     {el} (an element inside host) or {x,y} (host-relative px). */
+  function gestureDemo(host, steps, opts){
+    opts = opts || {};
+    if(reduceMotion || !host || !steps.length) return { stop(){} };
+    const ghost=document.createElement('div'); ghost.className='ghost'; host.appendChild(ghost);
+    let label=null;
+    if(opts.label){ label=document.createElement('div'); label.className='ghost-label'; label.textContent=opts.label; host.appendChild(label); }
+    let cancelled=false, cur=null;
+    const centerOf=(s)=>{ if(s.x!=null) return {x:s.x,y:s.y};
+      const hr=host.getBoundingClientRect(), r=s.el.getBoundingClientRect();
+      return { x:r.left-hr.left+r.width/2, y:r.top-hr.top+r.height/2 }; };
+    const place=(el,p)=>{ el.style.left=p.x+'px'; el.style.top=p.y+'px'; };
+    let i=0;
+    function step(){
+      if(cancelled || !host.isConnected || !modal.classList.contains('open')) return;
+      const p0=centerOf(steps[i]); place(ghost,p0); if(label) place(label,{x:p0.x,y:p0.y-32});
+      if(i>=steps.length-1){
+        ghost.classList.add('tap'); setTimeout(()=>ghost.classList.remove('tap'),480);
+        setTimeout(()=>{ i=0; step(); }, 950);
+        return;
+      }
+      const p1=centerOf(steps[i+1]);
+      cur=ghost.animate([{left:p0.x+'px',top:p0.y+'px'},{left:p1.x+'px',top:p1.y+'px'}],
+        {duration:opts.dur||900,easing:'cubic-bezier(.45,0,.2,1)',fill:'forwards'});
+      if(label) label.animate([{left:p0.x+'px',top:(p0.y-32)+'px'},{left:p1.x+'px',top:(p1.y-32)+'px'}],{duration:opts.dur||900,easing:'cubic-bezier(.45,0,.2,1)',fill:'forwards'});
+      cur.onfinish=()=>{ if(cancelled)return; place(ghost,p1); i++; setTimeout(step,220); };
+    }
+    step();
+    function stop(){ if(cancelled)return; cancelled=true; try{cur&&cur.cancel()}catch(e){}
+      ghost.style.opacity='0'; if(label) label.style.opacity='0';
+      setTimeout(()=>{ ghost.remove(); if(label) label.remove(); },350); }
+    const onDown=()=>stop();
+    host.addEventListener('pointerdown',onDown,{once:true});
+    host.addEventListener('touchstart',onDown,{once:true});
+    return { stop };
+  }
 
   /* ---------------- PUZZLE CONTENT ---------------- */
   const ADV = {
@@ -940,6 +1041,9 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
       addEventListener('mousemove',move); addEventListener('touchmove',move,{passive:false});
       addEventListener('mouseup',end); addEventListener('touchend',end);
     });
+    // show the drag once, on the object
+    const firstFuse=$$('#ftray .fuse')[0];
+    if(firstFuse && slots[0]) gestureDemo($('.fuse-stage'), [{el:firstFuse},{el:slots[0]}], {label:'Drag into a socket', dur:850});
     master.onclick=()=>{ if(!master.classList.contains('ready'))return Audio.deny();
       master.textContent='POWER ON'; Audio.unlock(); setTimeout(()=>done(),420); };
   }
@@ -964,11 +1068,15 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
     const moveF=(e)=>{ if(!dragging)return; const cx=(e.touches?e.touches[0]:e).clientX; rot+=(cx-lastX)*0.25; lastX=cx;
       rot=Math.max(-20,Math.min(20,rot)); setR();
       if(Math.abs(rot)<2.2 && !straight){ straight=true; rot=0; setR(); frame.classList.add('level'); dragging=false;
-        Audio.reveal(); key.classList.add('show'); note.textContent='A key! Drag it to the lock.'; setupKey(); } };
+        Audio.reveal(); key.classList.add('show'); note.textContent='A key! Drag it to the lock.'; setupKey();
+        gestureDemo(stage, [{el:key},{el:lock}], {label:'Drag to the lock', dur:950}); } };
     const endF=()=>dragging=false;
     frame.addEventListener('mousedown',startF); frame.addEventListener('touchstart',startF,{passive:false});
     addEventListener('mousemove',moveF); addEventListener('touchmove',moveF,{passive:false});
     addEventListener('mouseup',endF); addEventListener('touchend',endF);
+    // demonstrate the straighten drag on open
+    const _fr=stage.getBoundingClientRect();
+    gestureDemo(stage, [{x:_fr.width*0.34,y:_fr.height*0.44},{x:_fr.width*0.66,y:_fr.height*0.44}], {label:'Drag to straighten', dur:1000});
 
     function setupKey(){
       let kd=false;
@@ -1032,6 +1140,9 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
       active=null; line=null; }
     addEventListener('mousemove',move); addEventListener('touchmove',move,{passive:false});
     addEventListener('mouseup',end); addEventListener('touchend',end);
+    // show one connection being made
+    const _srcs=$$('.src',svg), _first=_srcs[0], _match=dsts.find(d=>d.dataset.c===_first.dataset.c);
+    if(_first && _match) gestureDemo($('.cable-stage'), [{el:_first},{el:_match}], {label:'Drag to the same colour', dur:1000});
   }
 
   /* ===== PUZZLE 4: LEADERSHIP — repeat the sequence (memory) ===== */
@@ -1039,25 +1150,37 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
     openModal(`<button class="pclose" id="px">&times;</button>
       <div class="ptag">Crack the safe</div>
       <h2 class="serif">The Mentor's Safe</h2>
-      <p class="pdesc">The previous top agent left the combination as a rhythm. Watch it once, then repeat it back.</p>
-      <div class="simon-grid" id="sgrid">
-        ${[0,1,2,3].map(i=>`<button class="sbtn" data-i="${i}"><span class="glow"></span></button>`).join('')}
+      <p class="pdesc">The last top agent left the combination as a rhythm of lights. Watch it play, then tap the lights back in the same order. Stuck? Watch it again as many times as you like.</p>
+      <div class="simon-turn" id="sturn">Watch<span class="sub">the lights will play the order</span></div>
+      <div class="simon-grid watching" id="sgrid">
+        ${[0,1,2,3].map(i=>`<button class="sbtn" data-i="${i}"><span class="glow"></span><span class="num"></span></button>`).join('')}
       </div>
-      <div class="simon-status" id="sstat">Watch carefully…</div>`);
+      <div class="simon-status" id="sstat"></div>
+      <button class="simon-again" id="sagain" hidden>↻ Watch again</button>`);
     $('#px').onclick=closeModal;
-    const btns=$$('.sbtn'), stat=$('#sstat');
+    const btns=$$('.sbtn'), stat=$('#sstat'), turn=$('#sturn'), grid=$('#sgrid'), again=$('#sagain');
     const freqs=[523,392,659,330];
-    const seq=[0,2,1,3,0]; let step=0, playing=true;
-    function demo(){ playing=true; step=0; stat.textContent='Watch carefully…';
-      seq.forEach((s,k)=> setTimeout(()=>{ btns[s].classList.add('lit'); Audio.note(freqs[s]);
-        setTimeout(()=>btns[s].classList.remove('lit'),340); }, 600+k*620));
-      setTimeout(()=>{ playing=false; stat.textContent='Now repeat the sequence.'; }, 600+seq.length*620+200);
+    const seq=[0,2,1,3,0]; let step=0, playing=true, ghost=null;
+    function setTurn(main,sub){ turn.innerHTML=main+(sub?`<span class="sub">${sub}</span>`:''); }
+    function moveGhost(b){ if(reduceMotion)return; if(!ghost){ ghost=document.createElement('div'); ghost.className='ghost'; grid.appendChild(ghost); }
+      const gr=grid.getBoundingClientRect(), r=b.getBoundingClientRect();
+      ghost.style.opacity='1'; ghost.style.left=(r.left-gr.left+r.width/2)+'px'; ghost.style.top=(r.top-gr.top+r.height/2)+'px';
+      ghost.classList.add('tap'); setTimeout(()=>ghost.classList.remove('tap'),380); }
+    function lightPad(idx,order){ const b=btns[idx]; b.classList.add('lit'); b.querySelector('.num').textContent=order; Audio.note(freqs[idx]); moveGhost(b);
+      setTimeout(()=>{ b.classList.remove('lit'); b.querySelector('.num').textContent=''; },520); }
+    function demo(){ playing=true; step=0; grid.classList.add('watching'); again.hidden=true;
+      setTurn('Watch','the lights will play the order'); stat.textContent='';
+      seq.forEach((s,k)=> setTimeout(()=>lightPad(s,k+1), 700+k*780));
+      setTimeout(()=>{ playing=false; grid.classList.remove('watching'); if(ghost) ghost.style.opacity='0';
+        setTurn('Your turn','tap the '+seq.length+' lights in that order'); stat.textContent='0 / '+seq.length; again.hidden=false; }, 700+seq.length*780+300);
     }
     btns.forEach((b,i)=> b.onclick=()=>{ if(playing)return; b.classList.add('lit'); Audio.note(freqs[i]);
-      setTimeout(()=>b.classList.remove('lit'),220);
-      if(i===seq[step]){ step++; if(step>=seq.length){ playing=true; stat.textContent='Safe open.'; Audio.unlock(); setTimeout(()=>done(),520);} }
-      else { step=0; Audio.deny(); stat.textContent='Not quite. Watch again…'; setTimeout(demo,700); } });
-    setTimeout(demo,500);
+      setTimeout(()=>b.classList.remove('lit'),200);
+      if(i===seq[step]){ step++; stat.textContent=step+' / '+seq.length;
+        if(step>=seq.length){ playing=true; setTurn('Unlocked'); stat.textContent=''; Audio.unlock(); setTimeout(()=>done(),560); } }
+      else { step=0; Audio.deny(); setTurn('Your turn','not quite — tap Watch again if you need it'); stat.textContent='0 / '+seq.length; } });
+    again.onclick=()=>{ if(!playing) demo(); };
+    setTimeout(demo,600);
   }
 
   /* ===== PUZZLE 5: BRAND — UV reveal ===== */
@@ -1065,7 +1188,7 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
     openModal(`<button class="pclose" id="px">&times;</button>
       <div class="ptag">Reveal the hidden mark</div>
       <h2 class="serif">The UV Light</h2>
-      <p class="pdesc">There's a message on this wall you were never meant to see. Move the light across it to reveal what's really here.</p>
+      <p class="pdesc">There's a message on this wall you were never meant to see. Drag the light across the wall to reveal what's really here.</p>
       <div class="uv-stage" id="uv">
         <div class="uv-hidden" id="uvh"><div class="bh brandmark">betterhomes</div><div class="tg">TRUST BETTER · GET BETTER</div></div>
         <div class="uv-light" id="uvl"></div>
@@ -1089,6 +1212,13 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
     }
     uv.addEventListener('mousemove',move); uv.addEventListener('touchmove',move,{passive:false});
     uv.addEventListener('touchstart',move,{passive:false});
+    // demonstrate the sweep
+    const ur=uv.getBoundingClientRect();
+    const uvDemo=gestureDemo(uv,[
+      {x:ur.width*0.2,y:ur.height*0.34},{x:ur.width*0.8,y:ur.height*0.4},
+      {x:ur.width*0.24,y:ur.height*0.64},{x:ur.width*0.8,y:ur.height*0.7}
+    ],{label:'Drag across the wall',dur:780});
+    uv.addEventListener('mousemove',()=>uvDemo.stop(),{once:true});
   }
 
   const PUZZLE_FN = { power:puzPower, training:puzTraining, marketing:puzMarketing, leadership:puzLeadership, brand:puzBrand };
@@ -1266,6 +1396,22 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
   });
   $('#helpBtn').addEventListener('click',()=>{ Audio.click(); state.hints++; showHint(); toast('Follow the glow'); });
 
+  /* one-time "the room wakes up" ripple — briefly flares all five hotspots in
+     sequence so a first-timer SEES there are five touchable things (works on
+     touch too, since it doesn't rely on hover). */
+  function runIntro(){
+    const spots=$$('.hot[data-puzzle]');
+    spots.forEach((h,i)=>{
+      setTimeout(()=>{
+        h.classList.add('attract');
+        setTimeout(()=>h.classList.remove('attract'), 1100);
+      }, 500 + i*420);
+    });
+    // after the ripple, keep the first object gently spotlighted until first tap
+    const first=spots[0];
+    if(first){ setTimeout(()=>{ if(state.count===0 && !modal.classList.contains('open')) first.classList.add('hint'); }, 500 + spots.length*420 + 400); }
+  }
+
   /* ---------------- BOOT ---------------- */
   function enter(){
     Audio.ensure();
@@ -1277,8 +1423,7 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
     scoreEl.classList.add('show');
     whisper(WHISPERS.start);
     resetIdle();
-    // gentle first nudge
-    setTimeout(()=>{ const f=$$('.hot[data-puzzle]')[0]; if(f && !modal.classList.contains('open')) toast('Try the fuse box on the wall'); }, 2600);
+    if(!reduceMotion) runIntro();
   }
   $('#enterBtn').addEventListener('click',enter);
 

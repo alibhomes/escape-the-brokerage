@@ -60,10 +60,11 @@ per-device board, so nothing ever breaks.
 
 ## Things you'll likely want to change
 
-- **CTA link** — the final "Continue Your Journey →" button in `index.html`
-  (search for `id="ctaBtn"`) currently points to `https://www.bhomes.com`.
-  Swap it for the real careers/apply URL.
-- **Brand** — search `--brand` and `--brand-font` in `index.html` to drop in the
-  official betterhomes colour and font (add the font as a `@font-face` data-URI to
-  keep the file self-contained).
+- **CTA link** — the final "Continue Your Journey →" button points to
+  `https://www.bhomes.com/en/join-our-team` (search `id="ctaBtn"` to change it).
+- **Brand** — palette and wordmark are matched from the Marketing Toolkit
+  (deep teal-navy, coral, steel-blue, off-white, serif wordmark, EST 1986).
+  Colours/font are single CSS variables at the top of `index.html` (`--brand`,
+  `--brand-navy`, `--brand-coral`, `--brand-font`). Drop in the licensed font as a
+  `@font-face` data-URI for a pixel-perfect wordmark.
 - **Scoring** — search `const POINTS` in `index.html` to tune the point values.
