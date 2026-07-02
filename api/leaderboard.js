@@ -10,8 +10,19 @@
 //   POST /api/leaderboard  body  -> { name, score, time, ts }  (adds + returns board)
 // --------------------------------------------------------------------------
 
-const REST_URL   = process.env.KV_REST_API_URL   || process.env.UPSTASH_REDIS_REST_URL;
-const REST_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+// Auto-detect the Upstash/KV REST credentials whatever prefix Vercel injects
+// (KV_*, UPSTASH_*, or a storage-name-prefixed variant). We avoid the READ_ONLY
+// token because the leaderboard needs to write (ZADD).
+function envEndingWith(suffix, avoid) {
+  if (process.env['KV_' + suffix]) return process.env['KV_' + suffix];
+  if (process.env['UPSTASH_REDIS_' + suffix]) return process.env['UPSTASH_REDIS_' + suffix];
+  for (const k in process.env) {
+    if (k.endsWith(suffix) && (!avoid || !k.includes(avoid)) && process.env[k]) return process.env[k];
+  }
+  return undefined;
+}
+const REST_URL   = envEndingWith('REST_API_URL')   || envEndingWith('REDIS_REST_URL');
+const REST_TOKEN = envEndingWith('REST_API_TOKEN', 'READ_ONLY') || envEndingWith('REDIS_REST_TOKEN', 'READ_ONLY');
 const KEY = 'etb:scores';
 
 async function redis(command) {
