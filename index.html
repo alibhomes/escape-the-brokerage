@@ -383,8 +383,8 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
 .master.ready:hover{background:rgba(201,164,92,.12)}
 
 /* puzzle: cables (svg) */
-.cable-stage{position:relative}
-.cable-svg{width:100%;height:300px;display:block;touch-action:none}
+.cable-stage{position:relative;touch-action:none}
+.cable-svg{width:100%;aspect-ratio:4/3;height:auto;max-height:56vh;display:block;touch-action:none}
 .port{cursor:pointer}
 .hintline{text-align:center;font-size:12px;color:rgba(233,230,223,.45);margin-top:6px}
 
@@ -1231,8 +1231,8 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
       <p class="pdesc">The listings went dark. Drag each cable to the port of the same colour to bring the marketing wall back to life.</p>
       <div class="cable-stage">
         <svg class="cable-svg" id="csvg" viewBox="0 0 400 300">
-          ${colors.map((c,i)=>`<circle class="port src" data-c="${i}" cx="60" cy="${60+i*90}" r="16" fill="${c}"/>`).join('')}
-          ${right.map((ci,slot)=>`<circle class="port dst" data-c="${colors.indexOf(colors[ci])}" data-slot="${slot}" cx="340" cy="${60+slot*90}" r="16" fill="${colors[ci]}" />`).join('')}
+          ${colors.map((c,i)=>`<circle class="port src" data-c="${i}" cx="64" cy="${60+i*90}" r="24" fill="${c}"/>`).join('')}
+          ${right.map((ci,slot)=>`<circle class="port dst" data-c="${colors.indexOf(colors[ci])}" data-slot="${slot}" cx="336" cy="${60+slot*90}" r="24" fill="${colors[ci]}" />`).join('')}
         </svg>
         <div class="hintline" id="chint">0 / 3 connected</div>
       </div>`);
@@ -1241,29 +1241,36 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
     const svg=$('#csvg'); const dsts=$$('.dst',svg); const order=[2,0,1];
     dsts.forEach((d,i)=>{ d.setAttribute('fill',colors[order[i]]); d.dataset.c=order[i]; });
     let connections=0; let active=null; let line=null; const NS='http://www.w3.org/2000/svg';
-    function pt(e){ const r=svg.getBoundingClientRect(); const c=e.touches?e.touches[0]:e;
-      return {x:(c.clientX-r.left)/r.width*400,y:(c.clientY-r.top)/r.height*300}; }
-    $$('.src',svg).forEach(s=>{
-      const start=(e)=>{ if(s.dataset.used)return; e.preventDefault(); active=s; Audio.soft();
-        line=document.createElementNS(NS,'path'); line.setAttribute('stroke',s.getAttribute('fill'));
-        line.setAttribute('stroke-width','5'); line.setAttribute('fill','none'); line.setAttribute('stroke-linecap','round');
-        svg.insertBefore(line,svg.firstChild); move(e); };
-      s.addEventListener('mousedown',start); s.addEventListener('touchstart',start,{passive:false});
-    });
+    // robust point: touchmove has .touches, touchend has .changedTouches, mouse is the event.
+    // map client->viewBox with the SVG's own matrix so it's exact at ANY rendered size.
+    function pt(e){ const c=(e.touches&&e.touches[0])||(e.changedTouches&&e.changedTouches[0])||e;
+      try{ const sp=svg.createSVGPoint(); sp.x=c.clientX; sp.y=c.clientY;
+        const q=sp.matrixTransform(svg.getScreenCTM().inverse()); return {x:q.x,y:q.y}; }
+      catch(err){ const r=svg.getBoundingClientRect(); return {x:(c.clientX-r.left)/r.width*400,y:(c.clientY-r.top)/r.height*300}; } }
+    function nearestSrc(p){ let s=null,best=1e9; $$('.src',svg).forEach(c=>{ if(c.dataset.used)return;
+      const d=Math.hypot(p.x-(+c.getAttribute('cx')),p.y-(+c.getAttribute('cy'))); if(d<best){best=d;s=c;} });
+      return best<=90 ? s : null; }
+    // start the drag by tapping ON OR NEAR a source port (forgiving for fingers)
+    function start(e){ const s=nearestSrc(pt(e)); if(!s) return; e.preventDefault(); active=s; Audio.soft();
+      line=document.createElementNS(NS,'path'); line.setAttribute('stroke',s.getAttribute('fill'));
+      line.setAttribute('stroke-width','6'); line.setAttribute('fill','none'); line.setAttribute('stroke-linecap','round');
+      svg.insertBefore(line,svg.firstChild); move(e); }
     function move(e){ if(!active)return; e.preventDefault(); const p=pt(e);
       const sx=+active.getAttribute('cx'), sy=+active.getAttribute('cy');
       line.setAttribute('d',`M${sx},${sy} C${sx+90},${sy} ${p.x-90},${p.y} ${p.x},${p.y}`); }
     function end(e){ if(!active)return; const p=pt(e);
-      let hit=null; dsts.forEach(d=>{ const dx=+d.getAttribute('cx'),dy=+d.getAttribute('cy');
-        if(!d.dataset.used && Math.hypot(p.x-dx,p.y-dy)<26 && d.dataset.c===active.dataset.c) hit=d; });
+      // color must match, so a generous radius is safe and forgiving on touch
+      let hit=null; dsts.forEach(d=>{ if(d.dataset.used)return; const dx=+d.getAttribute('cx'),dy=+d.getAttribute('cy');
+        if(Math.hypot(p.x-dx,p.y-dy)<70 && d.dataset.c===active.dataset.c) hit=d; });
       if(hit){ const dx=+hit.getAttribute('cx'),dy=+hit.getAttribute('cy'),sx=+active.getAttribute('cx'),sy=+active.getAttribute('cy');
         line.setAttribute('d',`M${sx},${sy} C${sx+90},${sy} ${dx-90},${dy} ${dx},${dy}`);
         line.style.filter='drop-shadow(0 0 6px '+active.getAttribute('fill')+')';
         active.dataset.used='1'; hit.dataset.used='1'; connections++; Audio.place();
         $('#chint').textContent=connections+' / 3 connected';
         if(connections>=3){ Audio.unlock(); setTimeout(()=>done(),520); }
-      } else { line.remove(); Audio.deny(); }
+      } else { if(line) line.remove(); Audio.deny(); }
       active=null; line=null; }
+    svg.addEventListener('mousedown',start); svg.addEventListener('touchstart',start,{passive:false});
     addEventListener('mousemove',move); addEventListener('touchmove',move,{passive:false});
     addEventListener('mouseup',end); addEventListener('touchend',end);
     // show one connection being made
