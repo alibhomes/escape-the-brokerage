@@ -423,10 +423,17 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
   color:var(--gold-soft);background:rgba(10,11,14,.7);padding:5px 12px;border-radius:100px;transform:translate(-50%,-50%);
   border:1px solid rgba(201,164,92,.3);white-space:nowrap;transition:opacity .35s}
 
-/* points that fly up into the total score */
-.scorefly{position:fixed;z-index:92;pointer-events:none;color:var(--gold-soft);font-weight:700;
-  font-size:clamp(18px,3.4vw,30px);font-variant-numeric:tabular-nums;text-shadow:0 2px 18px rgba(201,164,92,.7);
+/* points that POP big + gold, then rocket into the total (Candy-Crush juice) */
+.scorefly{position:fixed;z-index:92;pointer-events:none;font-weight:800;
+  font-size:clamp(34px,7vw,64px);font-variant-numeric:tabular-nums;letter-spacing:-.02em;
+  background:linear-gradient(180deg,#fff6dd 0%,#f0d081 45%,#c9992f 100%);-webkit-background-clip:text;
+  background-clip:text;color:transparent;transform:translate(-50%,-50%);
+  filter:drop-shadow(0 3px 10px rgba(0,0,0,.5)) drop-shadow(0 0 22px rgba(201,164,92,.85));will-change:transform,opacity}
+.spark{position:fixed;z-index:91;pointer-events:none;width:10px;height:10px;border-radius:50%;
+  background:radial-gradient(circle,#fff,var(--gold) 55%,transparent 72%);box-shadow:0 0 10px 2px rgba(201,164,92,.8);
   transform:translate(-50%,-50%)}
+.burstring{position:fixed;z-index:90;pointer-events:none;width:22px;height:22px;border-radius:50%;
+  border:2.5px solid var(--gold-soft);box-shadow:0 0 24px 4px rgba(201,164,92,.7);transform:translate(-50%,-50%)}
 
 /* puzzle: UV reveal */
 .uv-stage{position:relative;width:100%;aspect-ratio:16/10;border-radius:12px;overflow:hidden;
@@ -532,7 +539,8 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
   background:rgba(0,0,0,.28);backdrop-filter:blur(6px);transition:transform .3s cubic-bezier(.16,1,.3,1),box-shadow .3s,opacity .5s;
   opacity:0;transform:translateY(-8px);display:flex;align-items:center;gap:7px}
 .score.show{opacity:1;transform:none}
-.score.bump{transform:scale(1.14);box-shadow:0 0 26px -6px rgba(201,164,92,.7)}
+.score.bump{transform:scale(1.28);border-color:var(--gold);color:var(--gold-soft);
+  box-shadow:0 0 34px -2px rgba(201,164,92,.9), inset 0 0 12px rgba(201,164,92,.25)}
 .score .lab{font-size:9px;letter-spacing:.22em;opacity:.6}
 .fp{position:fixed;z-index:86;color:var(--gold-soft);font-weight:600;font-size:clamp(18px,3vw,26px);
   pointer-events:none;text-shadow:0 2px 18px rgba(201,164,92,.6);font-variant-numeric:tabular-nums;
@@ -576,6 +584,21 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
 .brow .sc{font-variant-numeric:tabular-nums;font-weight:600}
 .brow.you .rk{opacity:1;color:var(--gold-soft)}
 .bsource{text-align:center;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(26,18,8,.4);margin-top:12px}
+/* prizes + standings */
+.prizes .ptitle{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:rgba(26,18,8,.55);margin-bottom:10px;text-align:left}
+.prizes{margin-top:24px;display:flex;flex-direction:column;gap:8px}
+.prize{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;
+  background:linear-gradient(90deg,rgba(255,111,97,.16),rgba(255,255,255,.26));border:1px solid rgba(255,111,97,.32)}
+.prize .medal{font-size:20px;width:26px;text-align:center}
+.prize .pl{flex:1;font-size:14px;font-weight:600;color:#1a1208;text-align:left}
+.prize .pr{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#b23d30;font-weight:700;white-space:nowrap}
+.board-title{margin-top:24px;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:rgba(26,18,8,.55);text-align:left}
+.brow .pz{font-size:15px;margin-left:2px}
+.brow.rank1{background:linear-gradient(90deg,rgba(255,111,97,.3),rgba(255,255,255,.42));border:1px solid rgba(255,111,97,.5)}
+.brow.rank2,.brow.rank3{background:rgba(255,111,97,.12)}
+.brow.you,.brow.you.rank1,.brow.you.rank2,.brow.you.rank3{background:#1a1208;border-color:transparent}
+.yourank{margin-top:14px;text-align:center;font-size:14px;font-weight:600;color:#1a1208}
+.yourank .hl{color:#b23d30}
 
 /* reduced motion — keep the glows VISIBLE (static), just stop the motion */
 @media (prefers-reduced-motion: reduce){
@@ -735,11 +758,17 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
       <div class="report" id="report">
         <div class="rscore"><span id="rscoreVal">0</span><span class="pts">points</span></div>
         <div class="rbreak" id="rbreak"></div>
+
+        <div class="prizes" id="prizes"></div>
+
+        <div class="board-title">The leaderboard</div>
+        <div class="board" id="board"></div>
+        <div class="yourank" id="yourank"></div>
+
         <div class="rname" id="rname">
           <input id="nameInput" maxlength="20" placeholder="Add your name to the board" autocomplete="off" />
-          <button id="submitScore">Submit</button>
+          <button id="submitScore">Take your place</button>
         </div>
-        <div class="board" id="board"></div>
         <div class="bsource" id="bsource"></div>
       </div>
 
@@ -763,6 +792,8 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
   /* ---------------- AUDIO ENGINE (synthesized, no assets) ---------------- */
   const Audio = (()=>{
     let ctx=null, master=null, drone=null, droneFilter=null, muted=false;
+    let musicOn=false, musicGain=null, musicFilter=null, arpWet=null, arpTimer=null, prog=0, arpIdx=3;
+    const PENTA=[261.63,293.66,329.63,392.00,440.00,523.25,587.33,659.25]; // C major pentatonic
     function ensure(){
       if(ctx) return;
       try{
@@ -776,7 +807,60 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
         drone.connect(droneFilter); d2.connect(droneFilter); droneFilter.connect(dg); dg.connect(master);
         drone.start(); d2.start();
         ramp(master.gain, muted?0:0.9, 1.2);
+        startMusic();
       }catch(e){}
+    }
+    /* ----- generative ambient score: warm chord pad + pentatonic bells with echo,
+       brightening as the room warms and resolving at the escape ----- */
+    function startMusic(){
+      if(musicOn||!ctx) return; musicOn=true;
+      musicGain=ctx.createGain(); musicGain.gain.value=0.62; musicGain.connect(master);
+      musicFilter=ctx.createBiquadFilter(); musicFilter.type='lowpass'; musicFilter.frequency.value=340; musicFilter.Q.value=0.7;
+      musicFilter.connect(musicGain);
+      // warm chord pad (C major stack), gently detuned for shimmer
+      const padGain=ctx.createGain(); padGain.gain.value=0.0001; padGain.connect(musicFilter);
+      [65.41,98.00,130.81,164.81,196.00].forEach((f,i)=>{
+        const o=ctx.createOscillator(); o.type=i<2?'sine':'triangle'; o.frequency.value=f;
+        const d=ctx.createOscillator(); d.type='sine'; d.frequency.value=f*1.004;
+        const g=ctx.createGain(); g.gain.value=(i<2?0.5:0.26);
+        o.connect(g); d.connect(g); g.connect(padGain); o.start(); d.start();
+      });
+      ramp(padGain.gain, 0.12, 5);
+      // slow filter drift for movement
+      const lfo=ctx.createOscillator(); lfo.type='sine'; lfo.frequency.value=0.06;
+      const lfoG=ctx.createGain(); lfoG.gain.value=55; lfo.connect(lfoG); lfoG.connect(musicFilter.frequency); lfo.start();
+      // echo send for the bells
+      const delay=ctx.createDelay(); delay.delayTime.value=0.38;
+      const fb=ctx.createGain(); fb.gain.value=0.34; delay.connect(fb); fb.connect(delay); delay.connect(musicGain);
+      arpWet=delay;
+      scheduleArp();
+    }
+    function bell(freq,gain){
+      if(!ctx||muted||!musicFilter) return;
+      const t0=ctx.currentTime;
+      const o=ctx.createOscillator(); o.type='sine'; o.frequency.value=freq;
+      const o2=ctx.createOscillator(); o2.type='sine'; o2.frequency.value=freq*2.005;
+      const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,t0);
+      g.gain.exponentialRampToValueAtTime(gain,t0+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,t0+2.2);
+      const g2=ctx.createGain(); g2.gain.value=0.3; o2.connect(g2); g2.connect(g);
+      o.connect(g); g.connect(musicFilter); if(arpWet) g.connect(arpWet);
+      o.start(t0); o2.start(t0); o.stop(t0+2.35); o2.stop(t0+2.35);
+    }
+    function scheduleArp(){
+      if(!musicOn) return;
+      const base=0.02+prog*0.06;
+      if(!muted && Math.random()<0.5+prog*0.4){
+        arpIdx=Math.max(0,Math.min(PENTA.length-1, arpIdx+(Math.random()<0.5?-1:1)*(1+(Math.random()<0.3?1:0))));
+        bell(PENTA[arpIdx], base);
+        if(prog>0.5 && Math.random()<0.4) setTimeout(()=>bell(PENTA[Math.min(PENTA.length-1,arpIdx+2)], base*0.7),180);
+      }
+      arpTimer=setTimeout(scheduleArp, Math.max(950, 2300-prog*1100)+Math.random()*700);
+    }
+    function musicFinale(){
+      if(!ctx) return;
+      [523.25,659.25,783.99,1046.50].forEach((f,i)=> setTimeout(()=>bell(f,0.15),i*95));
+      if(musicFilter) ramp(musicFilter.frequency, 2600, 3);
     }
     function ramp(param,to,t){ if(!ctx)return; const n=ctx.currentTime; param.cancelScheduledValues(n); param.setValueAtTime(param.value,n); param.linearRampToValueAtTime(to,n+t); }
     function tone(freq,dur,type,gain,delay){
@@ -797,8 +881,11 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
       success(){ [523,659,784,1047].forEach((f,i)=>tone(f,0.5,'sine',0.16,i*0.09)); },
       unlock(){ [392,523,659,784,1047].forEach((f,i)=>tone(f,0.7,'sine',0.18,i*0.12)); tone(1568,1.2,'sine',0.10,0.6); },
       reveal(){ tone(880,0.6,'sine',0.10); tone(1320,0.6,'sine',0.06,0.05); },
-      warmUp(p){ if(droneFilter) ramp(droneFilter.frequency, 240+p*900, 1.6); },
+      reward(){ [880,1175,1568].forEach((f,i)=>tone(f,0.16,'triangle',0.12,i*0.045)); },
+      coinArrive(){ tone(1318,0.12,'sine',0.14); tone(1976,0.16,'sine',0.08,0.04); },
+      warmUp(p){ prog=p; if(droneFilter) ramp(droneFilter.frequency, 240+p*900, 1.6); if(musicFilter) ramp(musicFilter.frequency, 340+p*1500, 2.5); },
       note(f){ tone(f,0.34,'sine',0.16); tone(f*2,0.34,'sine',0.05,0.01); },
+      finale(){ musicFinale(); },
       toggle(){ muted=!muted; if(master) ramp(master.gain, muted?0:0.9, 0.4); return muted; },
       get muted(){return muted;}
     };
@@ -873,41 +960,80 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
       if(k<1) requestAnimationFrame(step); else { displayScore=to; setScoreText(to); } })(t0);
   }
   // points POP at the object, arc up into the total, then the total counts up
+  function spawnSparkles(x,y){
+    for(let i=0;i<11;i++){
+      const s=document.createElement('div'); s.className='spark'; s.style.left=x+'px'; s.style.top=y+'px'; document.body.appendChild(s);
+      const ang=(Math.PI*2*i/11)+Math.random()*0.6, dist=42+Math.random()*50;
+      s.animate([{transform:'translate(-50%,-50%) scale(1)',opacity:1},
+        {transform:`translate(calc(-50% + ${Math.cos(ang)*dist}px),calc(-50% + ${Math.sin(ang)*dist}px)) scale(0)`,opacity:0}],
+        {duration:520+Math.random()*280,easing:'cubic-bezier(.2,.8,.3,1)',fill:'forwards'}).onfinish=()=>s.remove();
+    }
+    const ring=document.createElement('div'); ring.className='burstring'; ring.style.left=x+'px'; ring.style.top=y+'px'; document.body.appendChild(ring);
+    ring.animate([{transform:'translate(-50%,-50%) scale(.4)',opacity:.9},{transform:'translate(-50%,-50%) scale(3.2)',opacity:0}],
+      {duration:520,easing:'ease-out',fill:'forwards'}).onfinish=()=>ring.remove();
+  }
   function addScore(pts, atX, atY){
-    state.score += pts; scoreEl.classList.add('show');
+    state.score += pts; scoreEl.classList.add('show'); if(Audio.reward) Audio.reward();
     if(atX==null || reduceMotion){ popChip(); countUp(state.score); return; }
+    spawnSparkles(atX, atY);
+    // big gold number bursts in, holds, then rockets into the total
     const fly=document.createElement('div'); fly.className='scorefly'; fly.textContent='+'+pts.toLocaleString();
     fly.style.left=atX+'px'; fly.style.top=atY+'px'; document.body.appendChild(fly);
-    fly.animate([{transform:'translate(-50%,-50%) scale(.4)',opacity:0},{transform:'translate(-50%,-50%) scale(1.28)',opacity:1}],
-      {duration:300,easing:'cubic-bezier(.16,1,.3,1)',fill:'forwards'});
+    fly.animate([
+      {transform:'translate(-50%,-50%) scale(.2) rotate(-8deg)',opacity:0},
+      {transform:'translate(-50%,-50%) scale(1.55) rotate(3deg)',opacity:1,offset:.5},
+      {transform:'translate(-50%,-50%) scale(1.25) rotate(0deg)',opacity:1}
+    ],{duration:440,easing:'cubic-bezier(.2,1.5,.3,1)',fill:'forwards'});
     setTimeout(()=>{
       const r=scoreEl.getBoundingClientRect(), tx=r.left+r.width/2, ty=r.top+r.height/2;
       const dx=tx-atX, dy=ty-atY;
       const a=fly.animate([
-        {transform:'translate(-50%,-50%) scale(1.15)',opacity:1,offset:0},
-        {transform:`translate(calc(-50% + ${dx*0.5}px),calc(-50% + ${dy*0.5-46}px)) scale(1)`,opacity:1,offset:.55},
-        {transform:`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(.35)`,opacity:0,offset:1}
-      ],{duration:700,easing:'cubic-bezier(.5,0,.7,1)',fill:'forwards'});
-      a.onfinish=()=>{ fly.remove(); popChip(); countUp(state.score); Audio.place(); };
-    }, 480);
+        {transform:'translate(-50%,-50%) scale(1.25)',opacity:1,offset:0},
+        {transform:`translate(calc(-50% + ${dx*0.5}px),calc(-50% + ${dy*0.5-64}px)) scale(1)`,opacity:1,offset:.5},
+        {transform:`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) scale(.28)`,opacity:0,offset:1}
+      ],{duration:660,easing:'cubic-bezier(.55,0,.6,1)',fill:'forwards'});
+      a.onfinish=()=>{ fly.remove(); popChip(); countUp(state.score); if(Audio.coinArrive) Audio.coinArrive(); };
+    }, 600);
   }
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
   /* ---------------- LEADERBOARD (local-first, global if API present) ---------------- */
+  // Prizes for the top of the board — edit these freely.
+  const PRIZES = [
+    { rank:1, medal:'🥇', label:'One-day luxury getaway',     tag:'1st place' },
+    { rank:2, medal:'🥈', label:'Fine-dining brunch for two', tag:'2nd place' },
+    { rank:3, medal:'🥉', label:'Rooftop dinner for two',      tag:'3rd place' },
+  ];
   const Board = {
     key:'etb_board_v1',
+    // seeded standings so the board is alive from day one (replace with real names,
+    // or connect the global KV store and these are ignored in favour of real players)
+    SEED:[
+      {name:'Sara K.',     score:9200, time:96,  ts:1},
+      {name:'Mohammed A.', score:8600, time:112, ts:2},
+      {name:'Priya R.',    score:8100, time:129, ts:3},
+      {name:'James O.',    score:7400, time:151, ts:4},
+      {name:'Aisha M.',    score:6800, time:172, ts:5},
+      {name:'Daniel V.',   score:6100, time:206, ts:6},
+    ],
     _local(){ try{ return JSON.parse(localStorage.getItem(this.key)||'[]'); }catch(e){ return []; } },
     _save(a){ try{ localStorage.setItem(this.key, JSON.stringify(a.slice(0,50))); }catch(e){} },
     async top(){
       try{ const r=await fetch('/api/leaderboard',{cache:'no-store'}); if(r.ok){ const d=await r.json(); return {scores:d.scores||[], source:'global'}; } }catch(e){}
-      return { scores:this._local().sort((a,b)=>b.score-a.score), source:'local' };
+      return { scores:this.SEED.concat(this._local()).sort((a,b)=>b.score-a.score), source:'local' };
     },
     async submit(entry){
       try{ const r=await fetch('/api/leaderboard',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(entry)});
         if(r.ok){ const d=await r.json(); return {scores:d.scores||[], source:'global'}; } }catch(e){}
-      const a=this._local(); a.push(entry); a.sort((x,y)=>y.score-x.score); this._save(a); return {scores:a, source:'local'};
+      const a=this._local(); a.push(entry); this._save(a);
+      return { scores:this.SEED.concat(a).sort((x,y)=>y.score-x.score), source:'local' };
     }
   };
+  function renderPrizes(){
+    const el=$('#prizes'); if(!el) return;
+    el.innerHTML='<div class="ptitle">This week — top of the board wins</div>'+
+      PRIZES.map(p=>`<div class="prize"><span class="medal">${p.medal}</span><span class="pl">${escapeHtml(p.label)}</span><span class="pr">${p.tag}</span></div>`).join('');
+  }
 
   /* ---------------- IDLE HINT (never dead time) ---------------- */
   let idleT;
@@ -1306,7 +1432,7 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
     $('#ending').classList.add('show');
     $('#endMeta').textContent = 'Escaped in '+fmtTime(t)+' · '+state.count+' advantages · '+Object.keys(state.eggs).length+' secrets';
     setTimeout(()=> $('#flash').classList.remove('on'), 400);
-    Audio.warmUp(1);
+    Audio.warmUp(1); Audio.finale();
   }
 
   /* ----- score breakdown ----- */
@@ -1338,8 +1464,10 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
       wrap.appendChild(el); setTimeout(()=>el.classList.add('in'), 250+i*160); });
   }
   function brow(rank, s, you){
-    const el=document.createElement('div'); el.className='brow'+(you && s.ts===you.ts?' you':'');
-    el.innerHTML=`<span class="rk">${rank}</span><span class="nm">${escapeHtml(s.name||'Anonymous')}</span><span class="sc">${(s.score||0).toLocaleString()}</span>`;
+    const isYou = you && s.ts===you.ts;
+    const medal = rank<=3 ? `<span class="pz">${['🥇','🥈','🥉'][rank-1]}</span>` : '';
+    const el=document.createElement('div'); el.className='brow'+(isYou?' you':'')+(rank<=3?' rank'+rank:'');
+    el.innerHTML=`<span class="rk">${rank}</span><span class="nm">${escapeHtml(s.name||'Anonymous')}</span>${medal}<span class="sc">${(s.score||0).toLocaleString()}</span>`;
     return el;
   }
   function renderBoard(scores, you, source){
@@ -1352,6 +1480,15 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
     if(youIdx>=10) board.appendChild(brow(youIdx+1, scores[youIdx], you));
     $('#bsource').textContent = source==='global' ? 'Global leaderboard' : 'Saved on this device';
     $$('.brow',board).forEach((r,i)=> setTimeout(()=>r.classList.add('in'), 60*i));
+    // "you're #X" line + prize call-out
+    const yr=$('#yourank'); if(yr){
+      if(youIdx>=0){ const rank=youIdx+1; const prize=PRIZES.find(p=>p.rank===rank);
+        yr.innerHTML = prize
+          ? `You're <span class="hl">#${rank}</span> — in line for the <span class="hl">${escapeHtml(prize.label)}</span> 🎉`
+          : `You're <span class="hl">#${rank}</span> on the board. Only the top 3 win — can you climb?`;
+        yr.style.display='block';
+      } else yr.style.display='none';
+    }
   }
 
   let reportOpen=false;
@@ -1362,6 +1499,7 @@ button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
     $('#report').classList.add('open');
     animateScore(bd.total);
     renderBreakdown(bd.rows);
+    renderPrizes();
     const {scores, source} = await Board.top();
     renderBoard(scores, null, source);
   });
